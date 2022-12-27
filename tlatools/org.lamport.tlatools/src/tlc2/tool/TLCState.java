@@ -7,10 +7,12 @@ package tlc2.tool;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.regex.Pattern;
 
 import tla2sany.semantic.OpDeclNode;
 import tla2sany.semantic.SymbolNode;
@@ -194,5 +196,60 @@ public abstract class TLCState implements Cloneable, Serializable {
 
 	public Value setCached(int key, Value value) {
 		return null;
+	}
+	
+	@Override
+	public int hashCode() {
+		return format(this).hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object other) {
+		if (other instanceof TLCState) {
+			TLCState o = (TLCState) other;
+			return format(this).equals(format(o));
+		}
+		return false;
+	}
+	
+	
+	private static String format(TLCState s) {
+    	return format(s.toString());
+    }
+    
+    private static String format(String s) {
+    	return stripLeadingAnd(spaceAfterAnd(stripNewline(s))).trim();
+    }
+
+    private static String stripLeadingAnd(String s) {
+		if (s.length() >= 2 && s.substring(0, 2).equals("/\\")) {
+			return s.substring(2);
+		}
+		else {
+			return s;
+		}
+	}
+    
+    private static String spaceAfterAnd(String s) {
+    	ArrayList<String> conjuncts = new ArrayList<String>();
+    	String[] raw = s.split(Pattern.quote("/\\"));
+    	for (int i = 0; i < raw.length; ++i) {
+    		String val = raw[i].trim();
+    		if (!val.isEmpty()) {
+    			conjuncts.add(val);
+    		}
+    	}
+    	return String.join(" /\\ ", conjuncts);
+	}
+    
+    private static String stripNewline(String s) {
+		StringBuilder sNew = new StringBuilder();
+		for (int i = s.length()-1; i >= 0; --i) {
+			char c = s.charAt(i);
+			if (c != '\n') {
+				sNew.insert(0, c);
+			}
+		}
+		return sNew.toString();
 	}
 }

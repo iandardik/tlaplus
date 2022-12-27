@@ -148,9 +148,11 @@ public abstract class CheckImpl extends ModelChecker {
 	for (int j = 0; j < cnt; j++) {
 	  if (!this.tool.isValid(this.tool.getInvariants()[j], state)) {
 	    // We get here because of invariant violation:
-	    ToolIO.out.println("Error: Invariant " + this.tool.getInvNames()[j] +
-			       " is violated. The behavior up to this point is:");
-	    return false;
+        // idardik begin
+	    //ToolIO.out.println("Error: Invariant " + this.tool.getInvNames()[j] +
+			       //" is violated. The behavior up to this point is:");
+		//return false;
+        // idardik end
 	  }
 	}
       }

@@ -48,6 +48,8 @@ import util.UniqueString;
 public class ModelChecker extends AbstractChecker
 {
 
+    public ExtKripke kripke = new ExtKripke();
+
 	protected static final boolean coverage = TLCGlobals.isCoverageEnabled();
 	/**
 	 * If the state/ dir should be cleaned up after a successful model run
@@ -241,6 +243,11 @@ public class ModelChecker extends AbstractChecker
         {
             report("running TLC");
             result = this.runTLC(Integer.MAX_VALUE);
+
+            // idardik start
+            System.out.println(this.kripke);
+            // idardik end
+
             if (result != EC.NO_ERROR)
             {
                 report("TLC terminated with error");
@@ -1129,6 +1136,11 @@ public class ModelChecker extends AbstractChecker
 		 * @see tlc2.tool.IStateFunctor#addElement(tlc2.tool.TLCState)
 		 */
 		public Object addElement(final TLCState curState) {
+            // idardik begin
+            //System.out.println("Init:\n" + curState);
+            kripke.addInitState(curState);
+            // idardik end
+
 			if (Long.bitCount(numberOfInitialStates) == 1 && numberOfInitialStates > 1) {
 				MP.printMessage(EC.TLC_COMPUTING_INIT_PROGRESS, Long.toString(numberOfInitialStates));
 			}

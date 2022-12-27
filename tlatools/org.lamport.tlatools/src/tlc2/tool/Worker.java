@@ -77,6 +77,17 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 		this.filename = metadir + FileUtil.separator + specFile + "-" + myGetId();
 		this.raf = new BufferedRandomAccessFile(filename + TLCTrace.EXT, "rw");
 	}
+	
+	private static String stripNewline(String s) {
+		StringBuilder sNew = new StringBuilder();
+		for (int i = s.length()-1; i >= 0; --i) {
+			char c = s.charAt(i);
+			if (c != '\n') {
+				sNew.insert(0, c);
+			}
+		}
+		return sNew.toString();
+	}
 
 	/**
    * This method gets a state from the queue, generates all the
@@ -88,6 +99,7 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 		try {
 			while (true) {
 				curState = this.squeue.sDequeue();
+                
 				if (curState == null) {
 					synchronized (this.tlc) {
 						if(!this.tlc.setDone()) {
@@ -104,6 +116,24 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 					return;
 				}
 				setCurrentState(curState);
+				
+				// idardik start
+                // find all transitions from curState
+				String src = stripNewline(curState.toString());
+                Action[] actions = this.tlc.tool.getActions();
+                for (int i = 0; i < actions.length; ++i) {
+                	Action act = actions[i];
+                    //System.out.println("Act: " + act.getName());
+                	StateVec succ = this.tool.getNextStates(act, curState);
+                	for (int j = 0; j < succ.size(); ++j) {
+                		//String dst = stripNewline(succ.elementAt(j).toString());
+                		//String transition = "(" + src + ", " + dst + ")";
+                		//System.out.println(transition);
+                        TLCState nextState = succ.elementAt(j);
+                        this.tlc.kripke.addTransition(act, curState, nextState);
+                	}
+                }
+                // idardik end
 				
 				if (this.checkLiveness || mode == Mode.MC_DEBUG) {
 					// Allocate iff liveness is checked.
@@ -423,6 +453,7 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 				// It seems odd to subsume this under IVE, but we consider
 				// it an invariant that the values of all variables have to
 				// be defined.
+                System.out.println("Bad state 1: " + succState);
 				throw new InvariantViolatedException();
 			}
 			
@@ -440,14 +471,23 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 			
 			// Check if succState violates any invariant:
 			if (unseen) {
+                // idardik
 				if (this.doNextCheckInvariants(curState, succState)) {
-					throw new InvariantViolatedException();
+                    //String s = Worker.stripNewline(succState.toString());
+                    //System.out.println("Found bad state: " + s);
+					//throw new InvariantViolatedException();
+                    this.tlc.kripke.addBadState(succState);
 				}
+                else {
+                    this.tlc.kripke.addGoodState(curState);
+                    this.tlc.kripke.addGoodState(succState);
+                }
 			}
 			
 			// Check if the state violates any implied action. We need to do it
 			// even if succState is not new.
 			if (this.doNextCheckImplied(curState, succState)) {
+                System.out.println("Bad state 3: " + succState);
 				throw new InvariantViolatedException();
 			}
 			
@@ -526,14 +566,22 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
                 	if (TLCGlobals.continuation) {
                         synchronized (this.tlc)
                         {
+                            // idardik
+                            /*
 							MP.printError(EC.TLC_INVARIANT_VIOLATED_BEHAVIOR,
 									this.tool.getInvNames()[k]);
 							this.tlc.trace.printTrace(curState, succState);
 							return false;
+                            */
+							return true;
                         }
                 	} else {
+                        // idardik
+                        /*
 						return this.doNextSetErr(curState, succState, false,
 								EC.TLC_INVARIANT_VIOLATED_BEHAVIOR, this.tool.getInvNames()[k]);
+                                */
+                        return true;
                 	}
 				}
 			}

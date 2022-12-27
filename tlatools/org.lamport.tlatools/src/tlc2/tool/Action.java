@@ -147,4 +147,18 @@ public final class Action implements ToolGlobals, Serializable {
 	public boolean isInternal() {
 		return isInternal;
 	}
+	
+	@Override
+	public int hashCode() {
+		return this.getName().hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object other) {
+		if (other instanceof TLCState) {
+			Action o = (Action) other;
+			return this.getName().equals(o.getName());
+		}
+		return false;
+	}
 }

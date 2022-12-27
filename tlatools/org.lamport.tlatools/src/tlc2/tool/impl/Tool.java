@@ -879,6 +879,7 @@ public abstract class Tool
   
   protected final TLCState getNextStatesImpl(final Action action, SemanticNode pred, ActionItemList acts, Context c,
               TLCState s0, TLCState s1, INextStateFunctor nss, CostModel cm) {
+        //System.out.println("idardik getNextStatesImpl");
         switch (pred.getKind()) {
         case OpApplKind:
           {
