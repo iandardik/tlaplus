@@ -99,6 +99,10 @@ public class ModelChecker extends AbstractChecker
         }
     }
     
+    public ExtKripke getKripke() {
+    	return kripke;
+    }
+    
     /**
      * The only used constructor of the TLA+ model checker
      * SZ Feb 20, 2009
@@ -245,7 +249,7 @@ public class ModelChecker extends AbstractChecker
             result = this.runTLC(Integer.MAX_VALUE);
 
             // idardik start
-            System.out.println(this.kripke);
+            //System.out.println(this.kripke);
             // idardik end
 
             if (result != EC.NO_ERROR)

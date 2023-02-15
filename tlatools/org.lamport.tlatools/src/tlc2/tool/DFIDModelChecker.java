@@ -75,6 +75,10 @@ public class DFIDModelChecker extends AbstractChecker
         this.workers = new DFIDWorker[TLCGlobals.getNumWorkers()];
         this.numOfGenStates = new AtomicLong(0);
     }
+	
+	public ExtKripke getKripke() {
+		throw new RuntimeException("No Kripke Structure created in DFID mode");
+	}
 
     /**
      * This method does model checking on a TLA+ spec. All the visited

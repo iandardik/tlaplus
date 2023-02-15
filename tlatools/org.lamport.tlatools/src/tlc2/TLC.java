@@ -9,6 +9,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,6 +50,7 @@ import tlc2.tool.management.TLCStandardMBean;
 import tlc2.util.DotStateWriter;
 import tlc2.util.FP64;
 import tlc2.util.IStateWriter;
+import tlc2.tool.ExtKripke;
 import tlc2.util.NoopStateWriter;
 import tlc2.util.RandomGenerator;
 import tlc2.util.StateWriter;
@@ -93,6 +95,10 @@ public class TLC {
     // SZ Feb 20, 2009: the class has been 
     // transformed from static to dynamic
 
+    /**
+     * Kripke Structure representing the TLA+ model
+     */
+    private ExtKripke kripke;
     /**
      * Whether to run in model checking or simulation mode.
      * Defaults to model checking.
@@ -204,6 +210,7 @@ public class TLC {
      * Initialization
      */
 	public TLC() {
+		kripke = null;
         welcomePrinted = false;
         
         runMode = RunMode.MODEL_CHECK;
@@ -225,6 +232,10 @@ public class TLC {
         fpSetConfiguration = new FPSetConfiguration();
 
         params = new HashMap<>();
+	}
+	
+	public ExtKripke getKripke() {
+		return kripke;
 	}
 
     /*
@@ -302,6 +313,44 @@ public class TLC {
      */
     public static void main(String[] args) throws Exception
     {
+    	PrintStream origPrintStream = System.out;
+    	// thank you https://stackoverflow.com/questions/9882487/how-can-i-disable-system-out-for-speed-in-java
+    	System.setOut(new java.io.PrintStream(new java.io.OutputStream() {
+    	    @Override public void write(int b) {}
+    	}) {
+    	    @Override public void flush() {}
+    	    @Override public void close() {}
+    	    @Override public void write(int b) {}
+    	    @Override public void write(byte[] b) {}
+    	    @Override public void write(byte[] buf, int off, int len) {}
+    	    @Override public void print(boolean b) {}
+    	    @Override public void print(char c) {}
+    	    @Override public void print(int i) {}
+    	    @Override public void print(long l) {}
+    	    @Override public void print(float f) {}
+    	    @Override public void print(double d) {}
+    	    @Override public void print(char[] s) {}
+    	    @Override public void print(String s) {}
+    	    @Override public void print(Object obj) {}
+    	    @Override public void println() {}
+    	    @Override public void println(boolean x) {}
+    	    @Override public void println(char x) {}
+    	    @Override public void println(int x) {}
+    	    @Override public void println(long x) {}
+    	    @Override public void println(float x) {}
+    	    @Override public void println(double x) {}
+    	    @Override public void println(char[] x) {}
+    	    @Override public void println(String x) {}
+    	    @Override public void println(Object x) {}
+    	    @Override public java.io.PrintStream printf(String format, Object... args) { return this; }
+    	    @Override public java.io.PrintStream printf(java.util.Locale l, String format, Object... args) { return this; }
+    	    @Override public java.io.PrintStream format(String format, Object... args) { return this; }
+    	    @Override public java.io.PrintStream format(java.util.Locale l, String format, Object... args) { return this; }
+    	    @Override public java.io.PrintStream append(CharSequence csq) { return this; }
+    	    @Override public java.io.PrintStream append(CharSequence csq, int start, int end) { return this; }
+    	    @Override public java.io.PrintStream append(char c) { return this; }
+    	});
+    	
         final TLC tlc = new TLC();
 
         // Try to parse parameters.
@@ -350,23 +399,15 @@ public class TLC {
 
         // Execute TLC.
         final int errorCode = tlc.process();
-
-        // Send logged output by email.
-        //
-        // This is needed when TLC runs on another host and email is
-        // the only means for the user to get access to the model
-        // checking results.
-        boolean mailSent = ms.send(tlc.getModuleFiles());
-
-        // Treat failure to send mail as a tool failure.
-        //
-        // With distributed TLC and CloudDistributedTLCJob in particular,
-        // the cloud node is immediately turned off once the TLC process
-        // has finished. If we were to shutdown the node even when sending
-        // out the email has failed, the result would be lost.
-        if (!mailSent) {
-            System.exit(1);
-        }
+        
+        System.setOut(origPrintStream);
+        
+        //idardik
+        // TODO
+        // need to create pre and post specs
+        ExtKripke ks = tlc.getKripke();
+        System.out.println(ks);
+        
 
         // Be explicit about tool success.
         System.exit(EC.ExitStatus.errorConstantToExitStatus(errorCode));
@@ -1200,6 +1241,8 @@ public class TLC {
 							startTime);
 					modelCheckerMXWrapper = new ModelCheckerMXWrapper((ModelChecker) TLCGlobals.mainChecker, this);
 					result = TLCGlobals.mainChecker.modelCheck();
+					//idardik
+					kripke = TLCGlobals.mainChecker.getKripke();
                 } else
                 {
 					TLCGlobals.mainChecker = new DFIDModelChecker(tool, metadir, stateWriter, deadlock, fromChkpt, startTime);

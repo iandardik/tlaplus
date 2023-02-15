@@ -42,6 +42,14 @@ public class ExtKripke {
     	deltaActions.put(transition, act);
     }
 
+    @Override
+    public String toString() {
+    	return printKS();
+    }
+    
+    
+    // code for printKS() below
+
     private Map<Action, ArrayList<TLCState>> createActionGuards() {
     	Map<Action, ArrayList<TLCState>> actionGuards = new HashMap<Action, ArrayList<TLCState>>();
     	
@@ -95,9 +103,8 @@ public class ExtKripke {
     	}
     	return builder.toString();
     }
-
-    @Override
-    public String toString() {
+    
+    private String printKS() {
         StringBuilder builder = new StringBuilder();
 
         builder.append("Init States\n");
@@ -123,9 +130,9 @@ public class ExtKripke {
         	builder.append("  " + act.getName() + ": (" + format(src.toString()) + ", " + format(dst.toString()) + ")\n");
         }
         
-        builder.append("\n");
-        builder.append("WA:\n");
-        builder.append(createGuardedNext());
+        //builder.append("\n");
+        //builder.append("WA:\n");
+        //builder.append(createGuardedNext());
 
         return builder.toString();
     }

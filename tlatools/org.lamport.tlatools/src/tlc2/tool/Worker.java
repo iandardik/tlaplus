@@ -453,8 +453,8 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 				// It seems odd to subsume this under IVE, but we consider
 				// it an invariant that the values of all variables have to
 				// be defined.
-                System.out.println("Bad state 1: " + succState);
-				throw new InvariantViolatedException();
+                this.tlc.kripke.addBadState(succState);
+				//throw new InvariantViolatedException();
 			}
 			
 			// Check if state is excluded by a state or action constraint.
@@ -487,8 +487,8 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 			// Check if the state violates any implied action. We need to do it
 			// even if succState is not new.
 			if (this.doNextCheckImplied(curState, succState)) {
-                System.out.println("Bad state 3: " + succState);
-				throw new InvariantViolatedException();
+                this.tlc.kripke.addBadState(succState);
+				//throw new InvariantViolatedException();
 			}
 			
 			if (inModel && unseen) {
