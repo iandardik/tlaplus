@@ -315,6 +315,7 @@ public class TLC {
     {
     	PrintStream origPrintStream = System.out;
     	// thank you https://stackoverflow.com/questions/9882487/how-can-i-disable-system-out-for-speed-in-java
+    	///*
     	System.setOut(new java.io.PrintStream(new java.io.OutputStream() {
     	    @Override public void write(int b) {}
     	}) {
@@ -350,6 +351,7 @@ public class TLC {
     	    @Override public java.io.PrintStream append(CharSequence csq, int start, int end) { return this; }
     	    @Override public java.io.PrintStream append(char c) { return this; }
     	});
+    	//*/
     	
         final TLC tlc = new TLC();
 
@@ -407,6 +409,11 @@ public class TLC {
         // need to create pre and post specs
         ExtKripke ks = tlc.getKripke();
         System.out.println(ks);
+        System.out.println(ks.getStrNANPS());
+        
+        ExtKripke errPre = ks.createErrPre();
+        System.out.println("Error Pre, w/o SF:");
+        System.out.println(errPre);
         
 
         // Be explicit about tool success.

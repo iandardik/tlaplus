@@ -1,4 +1,4 @@
---------------------------- MODULE CoffeeTeaSmall ---------------------------
+--------------------------- MODULE CoffeeTeaSmall_pre ---------------------------
 
 EXTENDS Naturals
 
@@ -31,16 +31,12 @@ Next ==
 Spec == Init /\ [][Next]_vars
 
 WaterSafeTemp == temp <= 220
-WaterSafeTempProp == [][WaterSafeTemp]_vars
 
 TypeOK ==
     /\ brewed \in SUBSET {"coffee", "tea", "hot_chocolate"}
     /\ temp \in Nat
 
 BrewOneItem == \A i1,i2 \in brewed : i1 = i2
-
-OnlyErrors == [][~WaterSafeTemp]_vars
-OnlyErrorsInv == ~WaterSafeTemp
 
 =============================================================================
 \* Modification History

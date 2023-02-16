@@ -472,6 +472,7 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
 			// Check if succState violates any invariant:
 			if (unseen) {
                 // idardik
+				/*
 				if (this.doNextCheckInvariants(curState, succState)) {
                     //String s = Worker.stripNewline(succState.toString());
                     //System.out.println("Found bad state: " + s);
@@ -479,16 +480,26 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
                     this.tlc.kripke.addBadState(succState);
 				}
                 else {
-                    this.tlc.kripke.addGoodState(curState);
+                    //this.tlc.kripke.addGoodState(curState);
                     this.tlc.kripke.addGoodState(succState);
-                }
+                }*/
 			}
 			
 			// Check if the state violates any implied action. We need to do it
 			// even if succState is not new.
+			//idardik
 			if (this.doNextCheckImplied(curState, succState)) {
-                this.tlc.kripke.addBadState(succState);
+                //this.tlc.kripke.addBadState(curState);
 				//throw new InvariantViolatedException();
+				System.out.println("cur: " + Worker.stripNewline(curState.toString()));
+				System.out.println("suc: " + Worker.stripNewline(succState.toString()));
+			}
+			//idardik this code does not work for properties right now, only invariants
+			if (this.doNextCheckInvariants(curState, succState) || this.doCheckImpliedOneState(succState)) {
+				this.tlc.kripke.addBadState(succState);
+			}
+			else {
+                this.tlc.kripke.addGoodState(succState);
 			}
 			
 			if (inModel && unseen) {
@@ -622,6 +633,26 @@ public final class Worker extends IdThread implements IWorker, INextStateFunctor
         {
         	this.tlc.doNextEvalFailed(curState, succState, EC.TLC_ACTION_PROPERTY_EVALUATION_FAILED,
 					this.tool.getImpliedActNames()[k], e);
+		}
+        return false;
+	}
+
+	private final boolean doCheckImpliedOneState(final TLCState state) throws IOException, WorkerException, Exception {
+		int k = 0;
+        try
+        {
+			for (k = 0; k < this.tool.getImpliedActions().length; k++)
+            {
+                if (!tool.isValid(this.tool.getImpliedActions()[k], state, TLCState.Empty))
+                {
+                    // We get here because of implied-action violation:
+                    return true;
+				}
+			}
+        } catch (Exception e)
+        {
+        	//this.tlc.doNextEvalFailed(curState, succState, EC.TLC_ACTION_PROPERTY_EVALUATION_FAILED,
+					//this.tool.getImpliedActNames()[k], e);
 		}
         return false;
 	}

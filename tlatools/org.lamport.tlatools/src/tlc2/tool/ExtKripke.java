@@ -20,8 +20,10 @@ public class ExtKripke {
     private Map<Pair<TLCState,TLCState>, Action> deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>();
 
     public ExtKripke() {}
+    
+    // pre-processing
 
-    // TODO: right now we assume all init states are good, fix this
+    // bad initial states are explicitly added (via addBadState()) in ModelChecker.java
     public void addInitState(TLCState s) {
         allStates.add(s);
         initStates.add(s);
@@ -41,12 +43,83 @@ public class ExtKripke {
     	delta.add(transition);
     	deltaActions.put(transition, act);
     }
+    
+    
+    // post-processing
+    
+    public ExtKripke createErrPre() {
+    	Set<TLCState> errStates = notAlwaysNotPhiStates();
+    	Set<Pair<TLCState,TLCState>> deltaErrSinks = createDeltaWithErrorSinks(badStates, delta);
+    	// no way to add SF yet
+    	ExtKripke errPre = new ExtKripke();
+    	errPre.initStates = this.initStates;
+    	errPre.allStates = errStates;
+    	errPre.delta = deltaErrSinks;
+    	errPre.deltaActions = this.deltaActions;
+    	return errPre;
+    }
+    
+    public Set<TLCState> notAlwaysNotPhiStates() {
+    	Set<TLCState> states = new HashSet<TLCState>();
+    	Set<Pair<TLCState,TLCState>> inverseDelta = invertTransitionRelation(delta);
+    	for (TLCState errState : badStates) {
+    		// perform a DFS (on inverse delta) from errState. add every state we find to "states"
+    		// discoverDFS will mutate "states"
+    		discoverDFS(errState, inverseDelta, states);
+    	}
+    	return states;
+    }
+    
+    public String getStrNANPS() {
+        StringBuilder builder = new StringBuilder();
+
+        builder.append("NANPS\n");
+        for (TLCState s : this.notAlwaysNotPhiStates()) {
+        	builder.append("  " + format(s) + "\n");
+        }
+
+        return builder.toString();
+    }
+
+    
+    private static Set<Pair<TLCState,TLCState>> createDeltaWithErrorSinks(Set<TLCState> errStates, Set<Pair<TLCState,TLCState>> delta) {
+    	Set<Pair<TLCState,TLCState>> deltaWithErrorSinks = new HashSet<Pair<TLCState,TLCState>>();
+    	for (Pair<TLCState,TLCState> t : delta) {
+    		if (!errStates.contains(t.first)) {
+    			deltaWithErrorSinks.add(t);
+    		}
+    	}
+    	return deltaWithErrorSinks;
+    }
+    
+    private static Set<Pair<TLCState,TLCState>> invertTransitionRelation(Set<Pair<TLCState,TLCState>> d) {
+    	Set<Pair<TLCState,TLCState>> inverse = new HashSet<Pair<TLCState,TLCState>>();
+    	for (Pair<TLCState,TLCState> t : d) {
+    		inverse.add(new Pair<TLCState,TLCState>(t.second, t.first));
+    	}
+    	return inverse;
+    }
+    
+    private static void discoverDFS(TLCState start, Set<Pair<TLCState,TLCState>> delta, Set<TLCState> states) {
+    	// base case
+    	if (states.contains(start)) {
+    		return;
+    	}
+    	
+    	states.add(start);
+    	for (Pair<TLCState,TLCState> t : delta) {
+    		if (start.equals(t.first)) {
+    			discoverDFS(t.second, delta, states);
+    		}
+    	}
+    }
+    
+    
 
     @Override
     public String toString() {
     	return printKS();
     }
-    
     
     // code for printKS() below
 
@@ -138,7 +211,7 @@ public class ExtKripke {
     }
 
 
-    private class Pair<A,B> {
+    private static class Pair<A,B> {
         public A first;
         public B second;
         

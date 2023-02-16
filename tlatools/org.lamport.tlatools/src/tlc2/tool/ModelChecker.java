@@ -1164,10 +1164,11 @@ public class ModelChecker extends AbstractChecker
 			try {
 				// Check if the state is a legal state
 				if (!tool.isGoodState(curState)) {
-					MP.printError(EC.TLC_INITIAL_STATE, new String[]{ "current state is not a legal state", curState.toString() });
-					this.errState = curState;
-					returnValue = EC.TLC_INITIAL_STATE;
-					throw new InvariantViolatedException();
+					kripke.addBadState(curState);
+					//MP.printError(EC.TLC_INITIAL_STATE, new String[]{ "current state is not a legal state", curState.toString() });
+					//this.errState = curState;
+					//returnValue = EC.TLC_INITIAL_STATE;
+					//throw new InvariantViolatedException();
 				}
 				boolean inModel = tool.isInModel(curState);
 				boolean seen = false;
@@ -1193,20 +1194,22 @@ public class ModelChecker extends AbstractChecker
 							MP.printError(EC.TLC_INVARIANT_VIOLATED_INITIAL,
 									new String[] { tool.getInvNames()[j].toString(), tool.evalAlias(curState, curState).toString() });
 							if (!TLCGlobals.continuation) {
-								this.errState = curState;
-								returnValue = EC.TLC_INVARIANT_VIOLATED_INITIAL;
-								throw new InvariantViolatedException();
+								kripke.addBadState(curState);
+								//this.errState = curState;
+								//returnValue = EC.TLC_INVARIANT_VIOLATED_INITIAL;
+								//throw new InvariantViolatedException();
 							}
 						}
 					}
 					for (int j = 0; j < tool.getImpliedInits().length; j++) {
 						if (!tool.isValid(tool.getImpliedInits()[j], curState)) {
 							// We get here because of implied-inits violation:
-							MP.printError(EC.TLC_PROPERTY_VIOLATED_INITIAL,
+							kripke.addBadState(curState);
+							/*MP.printError(EC.TLC_PROPERTY_VIOLATED_INITIAL,
 									new String[] { tool.getImpliedInitNames()[j], tool.evalAlias(curState, curState).toString() });
 							this.errState = curState;
 							returnValue = EC.TLC_PROPERTY_VIOLATED_INITIAL;
-							throw new InvariantViolatedException();
+							throw new InvariantViolatedException();*/
 						}
 					}
 				}

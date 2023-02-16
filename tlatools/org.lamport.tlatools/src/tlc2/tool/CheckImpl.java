@@ -112,6 +112,7 @@ public abstract class CheckImpl extends ModelChecker {
   
   /* Returns true iff s1 is reachable from s0 (s0 -+-> s1). */
   public final boolean checkReachability(TLCState s0, TLCState s1) {
+	//idardik
     Action next = this.tool.getNextStateSpec();    
     if (!this.tool.isValid(next, s0, s1)) {
       ToolIO.out.println("The following transition is illegal: ");
@@ -122,11 +123,11 @@ public abstract class CheckImpl extends ModelChecker {
     int cnt = this.tool.getImpliedActions().length;
     for (int i = 0; i < cnt; i++) {
       if (!this.tool.isValid(this.tool.getImpliedActions()[i], s0, s1)) {
-	ToolIO.out.println("Error: Action property " + this.tool.getImpliedActNames()[i] +
-			   " is violated.");
-	StatePrinter.printStandaloneErrorState(s0);
-	StatePrinter.printStandaloneErrorState(s1);
-	return false;
+		ToolIO.out.println("Error: Action property " + this.tool.getImpliedActNames()[i] +
+				   " is violated.");
+		StatePrinter.printStandaloneErrorState(s0);
+		StatePrinter.printStandaloneErrorState(s1);
+		return false;
       }
     }
     return true;
