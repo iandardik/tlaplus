@@ -1,7 +1,5 @@
 --------------------------- MODULE CoffeeTeaSmall_comp ---------------------------
 
-EXTENDS Naturals
-
 VARIABLES brewed, temp
 
 CT == INSTANCE CoffeeTeaSmall

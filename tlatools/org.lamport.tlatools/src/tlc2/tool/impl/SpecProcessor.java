@@ -151,6 +151,9 @@ public class SpecProcessor implements ValueConstants, ToolGlobals {
     private Vect<Action> impliedTemporalVec = new Vect<>();
     private Vect<String> impliedTemporalNameVec = new Vect<>();
     
+    private String[] varNames = null;
+    private String[] moduleNames = null;
+    
 	public SpecProcessor(final String rootFile, final FilenameToStream resolver, final int toolId, final Defns defns,
 			final ModelConfig config, final SymbolNodeValueLookupProvider snvlp, final OpDefEvaluator ode,
 			final TLAClass tlaClass, Mode mode, SpecObj obj) {
@@ -180,6 +183,14 @@ public class SpecProcessor implements ValueConstants, ToolGlobals {
 
 	      // Finally, process the config file.
 		processConfig();
+	}
+	
+	public String[] getVarNames() {
+		return this.varNames;
+	}
+	
+	public String[] getModuleNames() {
+		return this.moduleNames;
 	}
 
     /**
@@ -420,13 +431,13 @@ public class SpecProcessor implements ValueConstants, ToolGlobals {
         OpDeclNode[] varDecls = this.rootModule.getVariableDecls();
 
         this.variablesNodes = new OpDeclNode[varDecls.length];
-        UniqueString[] varNames = new UniqueString[varDecls.length];
+        varNames = new String[varDecls.length];
 
         for (int i = 0; i < varDecls.length; i++)
         {
             this.variablesNodes[i] = varDecls[i];
-            varNames[i] = varDecls[i].getName();
-            varNames[i].setLoc(i);
+            varNames[i] = varDecls[i].getName().toString();
+            //varNames[i].setLoc(i);
         }
 
         // SZ 11.04.2009: set the number of variables
@@ -478,10 +489,12 @@ public class SpecProcessor implements ValueConstants, ToolGlobals {
         // wrong to use it in the method processConstants.
         ModuleNode[] mods = this.moduleTbl.getModuleNodes();
         final Map<String, ModuleNode> modSet = new HashMap<String, ModuleNode>();
+        moduleNames = new String[mods.length];
         for (int i = 0; i < mods.length; i++)
         {
             this.processConstants(mods[i]);
             modSet.put(mods[i].getName().toString(), mods[i]);
+            moduleNames[i] = mods[i].getName().toString();
         }
 
         // Collect all the assumptions.

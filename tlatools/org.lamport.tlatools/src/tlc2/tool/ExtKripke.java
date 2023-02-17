@@ -50,11 +50,12 @@ public class ExtKripke {
     public ExtKripke createErrPre() {
     	Set<TLCState> errStates = notAlwaysNotPhiStates();
     	Set<Pair<TLCState,TLCState>> deltaErrSinks = createDeltaWithErrorSinks(badStates, delta);
+    	Set<Pair<TLCState,TLCState>> deltaErrPre = filterDeltaByStates(errStates, deltaErrSinks);
     	// no way to add SF yet
     	ExtKripke errPre = new ExtKripke();
     	errPre.initStates = this.initStates;
     	errPre.allStates = errStates;
-    	errPre.delta = deltaErrSinks;
+    	errPre.delta = deltaErrPre;
     	errPre.deltaActions = this.deltaActions;
     	return errPre;
     }
@@ -81,6 +82,16 @@ public class ExtKripke {
         return builder.toString();
     }
 
+
+    private static Set<Pair<TLCState,TLCState>> filterDeltaByStates(Set<TLCState> states, Set<Pair<TLCState,TLCState>> delta) {
+    	Set<Pair<TLCState,TLCState>> deltaFiltered = new HashSet<Pair<TLCState,TLCState>>();
+    	for (Pair<TLCState,TLCState> t : delta) {
+    		if (states.contains(t.first) && states.contains(t.second)) {
+    			deltaFiltered.add(t);
+    		}
+    	}
+    	return deltaFiltered;
+    }
     
     private static Set<Pair<TLCState,TLCState>> createDeltaWithErrorSinks(Set<TLCState> errStates, Set<Pair<TLCState,TLCState>> delta) {
     	Set<Pair<TLCState,TLCState>> deltaWithErrorSinks = new HashSet<Pair<TLCState,TLCState>>();
@@ -115,11 +126,75 @@ public class ExtKripke {
     }
     
     
+    
+    // printing
 
     @Override
     public String toString() {
     	return printKS();
     }
+    
+    
+    // print a TLA+ spec
+    
+    public String toPartialTLASpec(String tag) {
+    	StringBuilder builder = new StringBuilder();
+    	
+    	String initOp = "Init_" + tag;
+    	String nextOp = "Next_" + tag;
+    	String specOp = "Spec_" + tag;
+    	
+    	// Init operator
+    	builder.append(initOp).append(" ==\n  ").append(initExpr());
+    	builder.append("\n\n");
+    	
+    	// Next operator
+    	builder.append(nextOp).append(" ==\n  ").append(nextExpr());
+    	//builder.append("\n\n");
+    	
+    	// let's not include the spec so we don't need to parse "vars" from the spec
+    	/*
+    	// Spec operator
+    	builder.append(specOp).append(" == ")
+    		.append(initOp).append(" /\\ [][")
+    		.append(specOp).append("]_vars");
+    	*/
+    	
+    	return builder.toString();
+    }
+    
+    private String initExpr() {
+    	return "/\\ " + String.join("\n  /\\", statesToStringList(this.initStates));
+    }
+
+    private String nextExpr() {
+    	ArrayList<String> strTransitions = new ArrayList<String>();
+    	for (Pair<TLCState,TLCState> t : delta) {
+    		String pre = format(t.first.toString());
+    		String post = "(" + format(t.second.toString()) + ")'";
+    		String action = pre + " /\\ " + post;
+    		strTransitions.add(action);
+    	}
+    	return "\\/ " + String.join("\n  \\/", strTransitions);
+    }
+    
+    public String toTLASpec(String moduleName) {
+    	StringBuilder builder = new StringBuilder();
+    	//builder.append("--------------------------- MODULE ");
+    	//builder.append(moduleName);
+    	//builder.append(" ---------------------------\n");
+    	
+    	return builder.toString();
+    }
+    
+    private static ArrayList<String> statesToStringList(Set<TLCState> set) {
+    	ArrayList<String> arr = new ArrayList<String>();
+    	for (TLCState s : set) {
+    		arr.add(format(s.toString()));
+    	}
+    	return arr;
+    }
+    
     
     // code for printKS() below
 

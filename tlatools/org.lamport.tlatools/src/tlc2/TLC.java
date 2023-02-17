@@ -7,6 +7,7 @@ package tlc2;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,6 +34,7 @@ import tlc2.output.EC;
 import tlc2.output.ErrorTraceMessagePrinterRecorder;
 import tlc2.output.MP;
 import tlc2.output.Messages;
+import tlc2.tool.Action;
 import tlc2.tool.DFIDModelChecker;
 import tlc2.tool.ITool;
 import tlc2.tool.ModelChecker;
@@ -54,6 +57,7 @@ import tlc2.tool.ExtKripke;
 import tlc2.util.NoopStateWriter;
 import tlc2.util.RandomGenerator;
 import tlc2.util.StateWriter;
+import tlc2.util.Vect;
 import tlc2.value.RandomEnumerableValues;
 import util.Assert.TLCRuntimeException;
 import util.DebugPrinter;
@@ -83,6 +87,44 @@ public class TLC {
 	 * Whether the TLA+ spec is encoded in a .jar file, not a TLA+ text file.
 	 */
     private static boolean MODEL_PART_OF_JAR = false;
+    
+    // thank you https://stackoverflow.com/questions/9882487/how-can-i-disable-system-out-for-speed-in-java
+    private static final PrintStream SUPRESS_ALL_OUTPUT_PRINT_STREAM =
+    		new java.io.PrintStream(new java.io.OutputStream() {
+        	    @Override public void write(int b) {}
+        	}) {
+        	    @Override public void flush() {}
+        	    @Override public void close() {}
+        	    @Override public void write(int b) {}
+        	    @Override public void write(byte[] b) {}
+        	    @Override public void write(byte[] buf, int off, int len) {}
+        	    @Override public void print(boolean b) {}
+        	    @Override public void print(char c) {}
+        	    @Override public void print(int i) {}
+        	    @Override public void print(long l) {}
+        	    @Override public void print(float f) {}
+        	    @Override public void print(double d) {}
+        	    @Override public void print(char[] s) {}
+        	    @Override public void print(String s) {}
+        	    @Override public void print(Object obj) {}
+        	    @Override public void println() {}
+        	    @Override public void println(boolean x) {}
+        	    @Override public void println(char x) {}
+        	    @Override public void println(int x) {}
+        	    @Override public void println(long x) {}
+        	    @Override public void println(float x) {}
+        	    @Override public void println(double x) {}
+        	    @Override public void println(char[] x) {}
+        	    @Override public void println(String x) {}
+        	    @Override public void println(Object x) {}
+        	    @Override public java.io.PrintStream printf(String format, Object... args) { return this; }
+        	    @Override public java.io.PrintStream printf(java.util.Locale l, String format, Object... args) { return this; }
+        	    @Override public java.io.PrintStream format(String format, Object... args) { return this; }
+        	    @Override public java.io.PrintStream format(java.util.Locale l, String format, Object... args) { return this; }
+        	    @Override public java.io.PrintStream append(CharSequence csq) { return this; }
+        	    @Override public java.io.PrintStream append(CharSequence csq, int start, int end) { return this; }
+        	    @Override public java.io.PrintStream append(char c) { return this; }
+        	};
     
     /**
      * Possible TLC run modes: either model checking or simulation.
@@ -314,44 +356,7 @@ public class TLC {
     public static void main(String[] args) throws Exception
     {
     	PrintStream origPrintStream = System.out;
-    	// thank you https://stackoverflow.com/questions/9882487/how-can-i-disable-system-out-for-speed-in-java
-    	///*
-    	System.setOut(new java.io.PrintStream(new java.io.OutputStream() {
-    	    @Override public void write(int b) {}
-    	}) {
-    	    @Override public void flush() {}
-    	    @Override public void close() {}
-    	    @Override public void write(int b) {}
-    	    @Override public void write(byte[] b) {}
-    	    @Override public void write(byte[] buf, int off, int len) {}
-    	    @Override public void print(boolean b) {}
-    	    @Override public void print(char c) {}
-    	    @Override public void print(int i) {}
-    	    @Override public void print(long l) {}
-    	    @Override public void print(float f) {}
-    	    @Override public void print(double d) {}
-    	    @Override public void print(char[] s) {}
-    	    @Override public void print(String s) {}
-    	    @Override public void print(Object obj) {}
-    	    @Override public void println() {}
-    	    @Override public void println(boolean x) {}
-    	    @Override public void println(char x) {}
-    	    @Override public void println(int x) {}
-    	    @Override public void println(long x) {}
-    	    @Override public void println(float x) {}
-    	    @Override public void println(double x) {}
-    	    @Override public void println(char[] x) {}
-    	    @Override public void println(String x) {}
-    	    @Override public void println(Object x) {}
-    	    @Override public java.io.PrintStream printf(String format, Object... args) { return this; }
-    	    @Override public java.io.PrintStream printf(java.util.Locale l, String format, Object... args) { return this; }
-    	    @Override public java.io.PrintStream format(String format, Object... args) { return this; }
-    	    @Override public java.io.PrintStream format(java.util.Locale l, String format, Object... args) { return this; }
-    	    @Override public java.io.PrintStream append(CharSequence csq) { return this; }
-    	    @Override public java.io.PrintStream append(CharSequence csq, int start, int end) { return this; }
-    	    @Override public java.io.PrintStream append(char c) { return this; }
-    	});
-    	//*/
+    	System.setOut(TLC.SUPRESS_ALL_OUTPUT_PRINT_STREAM);
     	
         final TLC tlc = new TLC();
 
@@ -405,19 +410,110 @@ public class TLC {
         System.setOut(origPrintStream);
         
         //idardik
-        // TODO
-        // need to create pre and post specs
         ExtKripke ks = tlc.getKripke();
-        System.out.println(ks);
-        System.out.println(ks.getStrNANPS());
+        //System.out.println(ks);
+        //System.out.println(ks.getStrNANPS());
         
         ExtKripke errPre = ks.createErrPre();
-        System.out.println("Error Pre, w/o SF:");
-        System.out.println(errPre);
+        //System.out.println("Error Pre, w/o SF:");
+        //System.out.println(errPre);
         
+        FastTool ft = (FastTool) tlc.tool;
+        
+        final String tag = "_ErrPre";
+        final String specName = tlc.getSpecName() + tag;
+        final String moduleDecl = "--------------------------- MODULE " + specName + " ---------------------------";
+        final String endModule = "=============================================================================";
+        
+        final String varList = String.join(", ", ft.getVarNames());
+        final String moduleList = String.join(", ", filterArray(tlc.getSpecName(), ft.getModuleNames()));
+        final String varsDecl = "VARIABLES " + varList;
+        final String varsSeq = "vars" + tag + " == <<" + varList + ">>";
+        final String modulesDecl = "EXTENDS " + moduleList;
+        
+        System.out.println(varsDecl);
+        System.out.println(varsSeq);
+        System.out.println(modulesDecl);
+        
+        /*
+        String specBaseLoc = ft.getSpecDir() + ft.getRootFile();
+        String specLoc = specBaseLoc + ".tla";
+        ArrayList<String> specLines = fileContents(specLoc);
+        final int moduleDeclLoc = findFirstLineOfSpec(specLines);
+        final int newCodeLoc = findLastLineOfSpec(specLines) - 1;
+        assert(moduleDeclLoc >= 0);
+        assert(newCodeLoc > 0);
+        
+        String moduleDecl = "--------------------------- MODULE " + tlc.getSpecName() + "_ErrPre ---------------------------";
+        specLines.set(moduleDeclLoc, moduleDecl);
 
+        // print the TLA+ spec for ErrPre
+        specLines.add(newCodeLoc, "");
+        specLines.add(newCodeLoc+1, errPre.toPartialTLASpec("ErrPre"));
+        printStringArr(specLines);
+        
+        System.out.println();
+        
+        // print the config for ErrPre
+        //System.out.println("SPECIFICATION Spec_ErrPre");
+        System.out.println("INIT Init_ErrPre");
+        System.out.println("NEXT Next_ErrPre");
+        */
+        
         // Be explicit about tool success.
         System.exit(EC.ExitStatus.errorConstantToExitStatus(errorCode));
+    }
+    
+    private static ArrayList<String> filterArray(String filter, String[] arr) {
+    	ArrayList<String> filtered = new ArrayList<String>();
+    	for (int i = 0; i < arr.length; ++i) {
+    		String e = arr[i];
+    		if (!filter.equals(e)) {
+    			filtered.add(e);
+    		}
+    	}
+    	return filtered;
+    }
+    
+    private static ArrayList<String> fileContents(String loc) {
+    	ArrayList<String> lines = new ArrayList<String>();
+    	try {
+	      Scanner scan = new Scanner(new File(loc));
+	      while (scan.hasNextLine()) {
+	        lines.add(scan.nextLine());
+	      }
+	      scan.close();
+	    } catch (FileNotFoundException e) {
+	      System.out.println("The file " + loc + " does not exist!");
+	      e.printStackTrace();
+	    }
+    	return lines;
+    }
+    
+    private static int findFirstLineOfSpec(ArrayList<String> lines) {
+    	for (int i = 0; i < lines.size(); ++i) {
+    		String line = lines.get(i);
+    		if (line.length() >= 3 && line.substring(0,3).equals("---")) {
+    			return i;
+    		}
+    	}
+    	throw new RuntimeException("Unable to find the last line in the TLA+ spec!");
+    }
+    
+    private static int findLastLineOfSpec(ArrayList<String> lines) {
+    	for (int i = lines.size()-1; i >= 0; --i) {
+    		String line = lines.get(i);
+    		if (line.length() >= 3 && line.substring(0,3).equals("===")) {
+    			return i;
+    		}
+    	}
+    	throw new RuntimeException("Unable to find the last line in the TLA+ spec!");
+    }
+    
+    private static void printStringArr(ArrayList<String> arr) {
+    	for (String s : arr) {
+    		System.out.println(s);
+    	}
     }
     
 	// false if the environment (JVM, OS, ...) makes model checking impossible.
