@@ -398,7 +398,8 @@ public class TLC {
     private static String createErrPre(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
     	ExtKripke kripke = tlc.getKripke();
     	ExtKripke errPreKripke = kripke.createErrPre();
-    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, vars, outputLoc);
+    	final boolean strongFairness = true; // need SF in err pre
+    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, outputLoc, strongFairness, vars);
     }
     
     private static void createErrPost(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2, final String outputLoc) {
@@ -417,7 +418,8 @@ public class TLC {
     private static String createErrPost(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
     	ExtKripke kripke = tlc.getKripke();
     	ExtKripke errPreKripke = kripke.createErrPost();
-    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, vars, outputLoc);
+    	final boolean strongFairness = false; // do not add SF to err post
+    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, outputLoc, strongFairness, vars);
     }
     
     private static void combineConfig(final String tag, final String outputLoc) {
@@ -466,7 +468,8 @@ public class TLC {
         writeFile(name, builder.toString());
     }
     
-    private static String kripkeToTLA(final String tag, final TLC tlc, final ExtKripke kripke, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
+    private static String kripkeToTLA(final String tag, final TLC tlc, final ExtKripke kripke,
+    		final String tla, final String cfg, final String outputLoc, final boolean strongFairness, Set<String> vars) {
         FastTool ft = (FastTool) tlc.tool;
         
         final String specName = tlc.getSpecName() + "_" + tag;
@@ -492,7 +495,7 @@ public class TLC {
         builder.append("\n");
         builder.append(varsSeq).append("\n");
         builder.append("\n");
-        builder.append(kripke.toPartialTLASpec(varsSeqName)).append("\n");
+        builder.append(kripke.toPartialTLASpec(varsSeqName, strongFairness)).append("\n");
         builder.append(endModule).append("\n");
         builder.append("\n");
         
