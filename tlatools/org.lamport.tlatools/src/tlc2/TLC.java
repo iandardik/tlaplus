@@ -357,40 +357,80 @@ public class TLC {
      */
     public static void main(String[] args) throws Exception
     {
-    	if (args.length < 4) {
-    		System.out.println("Need 4 args");
+    	if (args.length < 5) {
+    		System.out.println("usage: tla2tools <spec1> <cfg1> <spec2> <cfg2> <output_loc>");
     		System.exit(0);
     	}
     	final String tla1 = args[0];
     	final String cfg1 = args[1];
     	final String tla2 = args[2];
     	final String cfg2 = args[3];
+    	final String outputLoc = args[4] + "/";
     	
-    	Set<String> vars1 = new HashSet<String>();
-    	Set<String> vars2 = new HashSet<String>();
-    	final String specName1 = runSpec(tla1, cfg1, vars1);
-    	final String specName2 = runSpec(tla2, cfg2, vars2);
-    	combineSpec(specName1, vars1, specName2, vars2);
-    	combineConfig();
+    	// initialize and run TLC
+    	TLC tlc1 = new TLC();
+    	TLC tlc2 = new TLC();
+    	runTLC(tla1, cfg1, tlc1);
+    	runTLC(tla2, cfg2, tlc2);
+    	
+    	// create err pre TLA+ spec
+    	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc);
+    	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc);
     	
     	System.out.println("Done");
     	
     	System.exit(0);
     }
     
-    private static void combineConfig() {
+    private static void createErrPre(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2, final String outputLoc) {
+    	// collect state variables from each spec
+    	Set<String> vars1 = new HashSet<String>();
+    	Set<String> vars2 = new HashSet<String>();
+    	
+    	// create one err pre file for each spec, then combine them into a single one for comparison
+    	final String tag = "ErrPre";
+    	final String specName1 = createErrPre(tag, tlc1, tla1, cfg1, vars1, outputLoc);
+    	final String specName2 = createErrPre(tag, tlc2, tla2, cfg2, vars2, outputLoc);
+    	combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
+    	combineConfig(tag, outputLoc);
+    }
+    
+    private static String createErrPre(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
+    	ExtKripke kripke = tlc.getKripke();
+    	ExtKripke errPreKripke = kripke.createErrPre();
+    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, vars, outputLoc);
+    }
+    
+    private static void createErrPost(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2, final String outputLoc) {
+    	// collect state variables from each spec
+    	Set<String> vars1 = new HashSet<String>();
+    	Set<String> vars2 = new HashSet<String>();
+    	
+    	// create one err pre file for each spec, then combine them into a single one for comparison
+    	final String tag = "ErrPost";
+    	final String specName1 = createErrPost(tag, tlc1, tla1, cfg1, vars1, outputLoc);
+    	final String specName2 = createErrPost(tag, tlc2, tla2, cfg2, vars2, outputLoc);
+    	combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
+    	combineConfig(tag, outputLoc);
+    }
+    
+    private static String createErrPost(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
+    	ExtKripke kripke = tlc.getKripke();
+    	ExtKripke errPreKripke = kripke.createErrPost();
+    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, vars, outputLoc);
+    }
+    
+    private static void combineConfig(final String tag, final String outputLoc) {
         StringBuilder builder = new StringBuilder();
         builder.append("SPECIFICATION Spec").append("\n");
         builder.append("PROPERTY Safety");
-        //System.out.println(builder.toString());
         
-        final String name = "test/Combined_ErrPre.cfg";
+        final String name = outputLoc + "Combined_" + tag + ".cfg";
         writeFile(name, builder.toString());
     }
     
-    private static void combineSpec(final String specName1, final Set<String> vars1, final String specName2, final Set<String> vars2) {
-    	final String tag = "ErrPre";
-        final String specName = "Combined" + "_" + tag;
+    private static void combineSpec(final String tag, final String specName1, final String specName2, final Set<String> vars1, final Set<String> vars2, final String outputLoc) {
+        final String specName = "Combined_" + tag;
         final String varsSeqName = "vars_" + tag;
         final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
         final String endModule = "=============================================================================";
@@ -421,41 +461,22 @@ public class TLC {
         builder.append(safetyDef).append("\n");
         builder.append(endModule).append("\n");
         builder.append("\n");
-        //System.out.println(builder.toString());
         
-        final String name = "test/" + specName + ".tla";
+        final String name = outputLoc + specName + ".tla";
         writeFile(name, builder.toString());
     }
     
-    private static String instanceWithList(ArrayList<String> vars) {
-    	ArrayList<String> varArrowList = new ArrayList<String>();
-    	for (String var : vars) {
-    		final String arrow = var + " <- " + var;
-    		varArrowList.add(arrow);
-    	}
-    	return String.join(", ", varArrowList);
-    }
-    
-    private static String runSpec(final String tla, final String cfg, Set<String> vars) {
-    	TLC tlc = new TLC();
-    	final String[] args = new String[] {"-deadlock", "-config", cfg, tla};
-    	runTLC(tlc, args);
-    	
-        ExtKripke ks = tlc.getKripke();
-        ExtKripke errPre = ks.createErrPre();
-        
+    private static String kripkeToTLA(final String tag, final TLC tlc, final ExtKripke kripke, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
         FastTool ft = (FastTool) tlc.tool;
         
-        final String tag = "ErrPre";
         final String specName = tlc.getSpecName() + "_" + tag;
-        final String varsSeqName = "vars"; //"vars_" + tag;
+        final String varsSeqName = "vars";
         final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
         final String endModule = "=============================================================================";
 
         ArrayList<String> moduleNameList = filterArray(tlc.getSpecName(), ft.getModuleNames());
         ArrayList<String> varNameList = toArrayList(ft.getVarNames());
         vars.addAll(varNameList);
-        //modules.addAll(moduleNameList);
 
         final String moduleList = String.join(", ", moduleNameList);
         final String varList = String.join(", ", varNameList);
@@ -471,31 +492,26 @@ public class TLC {
         builder.append("\n");
         builder.append(varsSeq).append("\n");
         builder.append("\n");
-        //System.out.println(errPre.toPartialTLASpec(tag, varsSeqName));
-        builder.append(errPre.toPartialTLASpec(varsSeqName)).append("\n");
+        builder.append(kripke.toPartialTLASpec(varsSeqName)).append("\n");
         builder.append(endModule).append("\n");
         builder.append("\n");
-        //System.out.println(ks.toPartialTLASpec("orig", varsSeqName));
-        //System.out.println(ks);
-        //System.out.println(builder.toString());
         
-        final String name = "test/" + specName + ".tla";
+        final String name = outputLoc + specName + ".tla";
         writeFile(name, builder.toString());
         
         return specName;
     }
     
-    private static void runTLC(TLC tlc, String[] args) {
-    	runTLC(tlc, args, true);
+    private static void runTLC(final String tla, final String cfg, TLC tlc) {
+    	runTLC(tla, cfg, tlc, true);
     }
     
-    private static void runTLC(TLC tlc, String[] args, boolean supressTLCOutput) {
+    private static void runTLC(final String tla, final String cfg, TLC tlc, boolean supressTLCOutput) {
+    	final String[] args = new String[] {"-deadlock", "-config", cfg, tla};
     	PrintStream origPrintStream = System.out;
     	if (supressTLCOutput) {
     		System.setOut(TLC.SUPRESS_ALL_OUTPUT_PRINT_STREAM);
     	}
-    	
-        //final TLC tlc = new TLC();
 
         // Try to parse parameters.
         if (!tlc.handleParameters(args)) {
@@ -538,8 +554,15 @@ public class TLC {
         final int errorCode = tlc.process();
         
         System.setOut(origPrintStream);
-        
-        //return tlc.getKripke();
+    }
+    
+    private static String instanceWithList(ArrayList<String> vars) {
+    	ArrayList<String> varArrowList = new ArrayList<String>();
+    	for (String var : vars) {
+    		final String arrow = var + " <- " + var;
+    		varArrowList.add(arrow);
+    	}
+    	return String.join(", ", varArrowList);
     }
 
     private static ArrayList<String> toArrayList(Set<String> src) {

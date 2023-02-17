@@ -71,6 +71,15 @@ public class ExtKripke {
     	return states;
     }
     
+    public ExtKripke createErrPost() {
+    	ExtKripke errPost = new ExtKripke();
+    	errPost.initStates = this.badStates;
+    	errPost.allStates = this.allStates;
+    	errPost.delta = this.delta;
+    	errPost.deltaActions = this.deltaActions;
+    	return errPost;
+    }
+    
     public String getStrNANPS() {
         StringBuilder builder = new StringBuilder();
 
@@ -179,19 +188,18 @@ public class ExtKripke {
     	return "\\/ " + String.join("\n  \\/ ", strTransitions);
     }
     
-    // idardik TODO this is dangerous. should have regex for white space
     private static String primeVars(String expr) {
-    	String[] strs = expr.split(" ="); // need regex for white space here
+    	String[] strs = expr.split("\\s*="); // matches any number of white space characters
     	return String.join("' =", strs);
     }
     
     public String toTLASpec(String moduleName) {
-    	StringBuilder builder = new StringBuilder();
+    	throw new RuntimeException("Not implemented!");
+    	//StringBuilder builder = new StringBuilder();
     	//builder.append("--------------------------- MODULE ");
     	//builder.append(moduleName);
     	//builder.append(" ---------------------------\n");
-    	
-    	return builder.toString();
+    	//return builder.toString();
     }
     
     private static ArrayList<String> statesToStringList(Set<TLCState> set) {
