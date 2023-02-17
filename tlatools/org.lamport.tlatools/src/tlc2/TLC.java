@@ -18,11 +18,13 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -355,10 +357,145 @@ public class TLC {
      */
     public static void main(String[] args) throws Exception
     {
-    	PrintStream origPrintStream = System.out;
-    	System.setOut(TLC.SUPRESS_ALL_OUTPUT_PRINT_STREAM);
+    	if (args.length < 4) {
+    		System.out.println("Need 4 args");
+    		System.exit(0);
+    	}
+    	final String tla1 = args[0];
+    	final String cfg1 = args[1];
+    	final String tla2 = args[2];
+    	final String cfg2 = args[3];
     	
-        final TLC tlc = new TLC();
+    	Set<String> vars1 = new HashSet<String>();
+    	Set<String> vars2 = new HashSet<String>();
+    	final String specName1 = runSpec(tla1, cfg1, vars1);
+    	final String specName2 = runSpec(tla2, cfg2, vars2);
+    	combineSpec(specName1, vars1, specName2, vars2);
+    	combineConfig();
+    	
+    	System.out.println("Done");
+    	
+    	System.exit(0);
+    }
+    
+    private static void combineConfig() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("SPECIFICATION Spec").append("\n");
+        builder.append("PROPERTY Safety");
+        //System.out.println(builder.toString());
+        
+        final String name = "test/Combined_ErrPre.cfg";
+        writeFile(name, builder.toString());
+    }
+    
+    private static void combineSpec(final String specName1, final Set<String> vars1, final String specName2, final Set<String> vars2) {
+    	final String tag = "ErrPre";
+        final String specName = "Combined" + "_" + tag;
+        final String varsSeqName = "vars_" + tag;
+        final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
+        final String endModule = "=============================================================================";
+        
+        ArrayList<String> varNameList1 = toArrayList(vars1);
+        ArrayList<String> varNameList2 = toArrayList(vars2);
+        
+        vars1.addAll(vars2);
+        ArrayList<String> combineVarNameList = toArrayList(vars1);
+        
+        final String varList = String.join(", ", combineVarNameList);
+        final String varsDecl = "VARIABLES " + varList;
+        
+        final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + instanceWithList(varNameList1);
+        final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + instanceWithList(varNameList2);
+        final String specDef = "Spec == S1!Spec";
+        final String safetyDef = "Safety == S2!Spec";
+
+        StringBuilder builder = new StringBuilder();
+        builder.append(specDecl).append("\n");
+        builder.append(varsDecl).append("\n");
+        builder.append("\n");
+        builder.append(spec1).append("\n");
+        builder.append("\n");
+        builder.append(spec2).append("\n");
+        builder.append("\n");
+        builder.append(specDef).append("\n");
+        builder.append(safetyDef).append("\n");
+        builder.append(endModule).append("\n");
+        builder.append("\n");
+        //System.out.println(builder.toString());
+        
+        final String name = "test/" + specName + ".tla";
+        writeFile(name, builder.toString());
+    }
+    
+    private static String instanceWithList(ArrayList<String> vars) {
+    	ArrayList<String> varArrowList = new ArrayList<String>();
+    	for (String var : vars) {
+    		final String arrow = var + " <- " + var;
+    		varArrowList.add(arrow);
+    	}
+    	return String.join(", ", varArrowList);
+    }
+    
+    private static String runSpec(final String tla, final String cfg, Set<String> vars) {
+    	TLC tlc = new TLC();
+    	final String[] args = new String[] {"-deadlock", "-config", cfg, tla};
+    	runTLC(tlc, args);
+    	
+        ExtKripke ks = tlc.getKripke();
+        ExtKripke errPre = ks.createErrPre();
+        
+        FastTool ft = (FastTool) tlc.tool;
+        
+        final String tag = "ErrPre";
+        final String specName = tlc.getSpecName() + "_" + tag;
+        final String varsSeqName = "vars"; //"vars_" + tag;
+        final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
+        final String endModule = "=============================================================================";
+
+        ArrayList<String> moduleNameList = filterArray(tlc.getSpecName(), ft.getModuleNames());
+        ArrayList<String> varNameList = toArrayList(ft.getVarNames());
+        vars.addAll(varNameList);
+        //modules.addAll(moduleNameList);
+
+        final String moduleList = String.join(", ", moduleNameList);
+        final String varList = String.join(", ", varNameList);
+        final String modulesDecl = "EXTENDS " + moduleList;
+        final String varsDecl = "VARIABLES " + varList;
+        final String varsSeq = varsSeqName + " == <<" + varList + ">>";
+
+        StringBuilder builder = new StringBuilder();
+        builder.append(specDecl).append("\n");
+        builder.append(modulesDecl).append("\n");
+        builder.append("\n");
+        builder.append(varsDecl).append("\n");
+        builder.append("\n");
+        builder.append(varsSeq).append("\n");
+        builder.append("\n");
+        //System.out.println(errPre.toPartialTLASpec(tag, varsSeqName));
+        builder.append(errPre.toPartialTLASpec(varsSeqName)).append("\n");
+        builder.append(endModule).append("\n");
+        builder.append("\n");
+        //System.out.println(ks.toPartialTLASpec("orig", varsSeqName));
+        //System.out.println(ks);
+        //System.out.println(builder.toString());
+        
+        final String name = "test/" + specName + ".tla";
+        writeFile(name, builder.toString());
+        
+        return specName;
+    }
+    
+    private static void runTLC(TLC tlc, String[] args) {
+    	runTLC(tlc, args, true);
+    }
+    
+    private static void runTLC(TLC tlc, String[] args, boolean supressTLCOutput) {
+    	PrintStream origPrintStream = System.out;
+    	if (supressTLCOutput) {
+    		System.setOut(TLC.SUPRESS_ALL_OUTPUT_PRINT_STREAM);
+    	}
+    	
+        //final TLC tlc = new TLC();
 
         // Try to parse parameters.
         if (!tlc.handleParameters(args)) {
@@ -376,7 +513,6 @@ public class TLC {
             System.exit(1);
         }
 
-		final MailSender ms = new MailSender();
 		// Setup how spec files will be resolved in the filesystem.
 		if (MODEL_PART_OF_JAR) {
 			// There was not spec file given, it instead exists in the
@@ -397,71 +533,29 @@ public class TLC {
 				tlc.setResolver(new SimpleFilenameToStream());
 			}
 		}
-
-		// Setup MailSender *before* calling tlc.process. The MailSender's task it to
-		// write the MC.out file. The MC.out file is e.g. used by CloudTLC to feed
-		// progress back to the Toolbox (see CloudDistributedTLCJob).
-		ms.setModelName(tlc.getModelName());
-		ms.setSpecName(tlc.getSpecName());
-
-        // Execute TLC.
+		
+		// Execute TLC.
         final int errorCode = tlc.process();
         
         System.setOut(origPrintStream);
         
-        //idardik
-        ExtKripke ks = tlc.getKripke();
-        //System.out.println(ks);
-        //System.out.println(ks.getStrNANPS());
-        
-        ExtKripke errPre = ks.createErrPre();
-        //System.out.println("Error Pre, w/o SF:");
-        //System.out.println(errPre);
-        
-        FastTool ft = (FastTool) tlc.tool;
-        
-        final String tag = "_ErrPre";
-        final String specName = tlc.getSpecName() + tag;
-        final String moduleDecl = "--------------------------- MODULE " + specName + " ---------------------------";
-        final String endModule = "=============================================================================";
-        
-        final String varList = String.join(", ", ft.getVarNames());
-        final String moduleList = String.join(", ", filterArray(tlc.getSpecName(), ft.getModuleNames()));
-        final String varsDecl = "VARIABLES " + varList;
-        final String varsSeq = "vars" + tag + " == <<" + varList + ">>";
-        final String modulesDecl = "EXTENDS " + moduleList;
-        
-        System.out.println(varsDecl);
-        System.out.println(varsSeq);
-        System.out.println(modulesDecl);
-        
-        /*
-        String specBaseLoc = ft.getSpecDir() + ft.getRootFile();
-        String specLoc = specBaseLoc + ".tla";
-        ArrayList<String> specLines = fileContents(specLoc);
-        final int moduleDeclLoc = findFirstLineOfSpec(specLines);
-        final int newCodeLoc = findLastLineOfSpec(specLines) - 1;
-        assert(moduleDeclLoc >= 0);
-        assert(newCodeLoc > 0);
-        
-        String moduleDecl = "--------------------------- MODULE " + tlc.getSpecName() + "_ErrPre ---------------------------";
-        specLines.set(moduleDeclLoc, moduleDecl);
+        //return tlc.getKripke();
+    }
 
-        // print the TLA+ spec for ErrPre
-        specLines.add(newCodeLoc, "");
-        specLines.add(newCodeLoc+1, errPre.toPartialTLASpec("ErrPre"));
-        printStringArr(specLines);
-        
-        System.out.println();
-        
-        // print the config for ErrPre
-        //System.out.println("SPECIFICATION Spec_ErrPre");
-        System.out.println("INIT Init_ErrPre");
-        System.out.println("NEXT Next_ErrPre");
-        */
-        
-        // Be explicit about tool success.
-        System.exit(EC.ExitStatus.errorConstantToExitStatus(errorCode));
+    private static ArrayList<String> toArrayList(Set<String> src) {
+    	ArrayList<String> dst = new ArrayList<String>();
+    	for (String s : src) {
+    		dst.add(s);
+    	}
+    	return dst;
+    }
+
+    private static ArrayList<String> toArrayList(String[] src) {
+    	ArrayList<String> dst = new ArrayList<String>();
+    	for (int i = 0; i < src.length; ++i) {
+    		dst.add(src[i]);
+    	}
+    	return dst;
     }
     
     private static ArrayList<String> filterArray(String filter, String[] arr) {
@@ -473,21 +567,6 @@ public class TLC {
     		}
     	}
     	return filtered;
-    }
-    
-    private static ArrayList<String> fileContents(String loc) {
-    	ArrayList<String> lines = new ArrayList<String>();
-    	try {
-	      Scanner scan = new Scanner(new File(loc));
-	      while (scan.hasNextLine()) {
-	        lines.add(scan.nextLine());
-	      }
-	      scan.close();
-	    } catch (FileNotFoundException e) {
-	      System.out.println("The file " + loc + " does not exist!");
-	      e.printStackTrace();
-	    }
-    	return lines;
     }
     
     private static int findFirstLineOfSpec(ArrayList<String> lines) {
@@ -514,6 +593,32 @@ public class TLC {
     	for (String s : arr) {
     		System.out.println(s);
     	}
+    }
+    
+    private static void writeFile(String file, String contents) {
+    	try {
+    		BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+    	    writer.write(contents);
+    	    writer.close();
+    	}
+    	catch (IOException e) {
+    		throw new RuntimeException("Failed to write to file: " + file + "!");
+    	}
+    }
+    
+    private static ArrayList<String> fileContents(String loc) {
+    	ArrayList<String> lines = new ArrayList<String>();
+    	try {
+	      Scanner scan = new Scanner(new File(loc));
+	      while (scan.hasNextLine()) {
+	        lines.add(scan.nextLine());
+	      }
+	      scan.close();
+	    } catch (FileNotFoundException e) {
+	      System.out.println("The file " + loc + " does not exist!");
+	      e.printStackTrace();
+	    }
+    	return lines;
     }
     
 	// false if the environment (JVM, OS, ...) makes model checking impossible.

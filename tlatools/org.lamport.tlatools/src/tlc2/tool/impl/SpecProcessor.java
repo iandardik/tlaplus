@@ -432,12 +432,14 @@ public class SpecProcessor implements ValueConstants, ToolGlobals {
 
         this.variablesNodes = new OpDeclNode[varDecls.length];
         varNames = new String[varDecls.length];
+        UniqueString[] uniqueVarNames = new UniqueString[varDecls.length];
 
         for (int i = 0; i < varDecls.length; i++)
         {
             this.variablesNodes[i] = varDecls[i];
+            uniqueVarNames[i] = varDecls[i].getName();
+            uniqueVarNames[i].setLoc(i);
             varNames[i] = varDecls[i].getName().toString();
-            //varNames[i].setLoc(i);
         }
 
         // SZ 11.04.2009: set the number of variables

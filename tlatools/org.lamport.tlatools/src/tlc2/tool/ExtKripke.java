@@ -137,12 +137,15 @@ public class ExtKripke {
     
     // print a TLA+ spec
     
-    public String toPartialTLASpec(String tag) {
+    public String toPartialTLASpec(String varsSeqName) {
     	StringBuilder builder = new StringBuilder();
     	
-    	String initOp = "Init_" + tag;
-    	String nextOp = "Next_" + tag;
-    	String specOp = "Spec_" + tag;
+    	//String initOp = "Init_" + tag;
+    	//String nextOp = "Next_" + tag;
+    	//String specOp = "Spec_" + tag;
+    	final String initOp = "Init";
+    	final String nextOp = "Next";
+    	final String specOp = "Spec";
     	
     	// Init operator
     	builder.append(initOp).append(" ==\n  ").append(initExpr());
@@ -150,32 +153,36 @@ public class ExtKripke {
     	
     	// Next operator
     	builder.append(nextOp).append(" ==\n  ").append(nextExpr());
-    	//builder.append("\n\n");
+    	builder.append("\n\n");
     	
-    	// let's not include the spec so we don't need to parse "vars" from the spec
-    	/*
     	// Spec operator
     	builder.append(specOp).append(" == ")
     		.append(initOp).append(" /\\ [][")
-    		.append(specOp).append("]_vars");
-    	*/
+    		.append(nextOp).append("]_" + varsSeqName);
     	
     	return builder.toString();
     }
     
     private String initExpr() {
-    	return "/\\ " + String.join("\n  /\\", statesToStringList(this.initStates));
+    	return "/\\ " + String.join("\n  /\\ ", statesToStringList(this.initStates));
     }
 
     private String nextExpr() {
     	ArrayList<String> strTransitions = new ArrayList<String>();
     	for (Pair<TLCState,TLCState> t : delta) {
     		String pre = format(t.first.toString());
-    		String post = "(" + format(t.second.toString()) + ")'";
+    		//String post = "(" + format(t.second.toString()) + ")'";
+    		String post = primeVars(format(t.second.toString()));
     		String action = pre + " /\\ " + post;
     		strTransitions.add(action);
     	}
-    	return "\\/ " + String.join("\n  \\/", strTransitions);
+    	return "\\/ " + String.join("\n  \\/ ", strTransitions);
+    }
+    
+    // idardik TODO this is dangerous. should have regex for white space
+    private static String primeVars(String expr) {
+    	String[] strs = expr.split(" ="); // need regex for white space here
+    	return String.join("' =", strs);
     }
     
     public String toTLASpec(String moduleName) {

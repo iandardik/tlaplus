@@ -10,6 +10,7 @@ then
 fi
 
 java -jar "${jar}" -deadlock -config "${module}.cfg" "${module}.tla"
+#java -jar "${jar}" "${module}.tla" "${module}.cfg"
 
 rm -rf states/
 rm -f "${module}_TTrace"*
