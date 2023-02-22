@@ -141,7 +141,7 @@ public class ExtKripke {
     private Set<TLCState> notAlwaysNotPhiStates() {
     	Set<TLCState> states = new HashSet<TLCState>();
     	Set<Pair<TLCState,TLCState>> inverseDelta = invertTransitionRelation(delta);
-    	for (TLCState errState : badStates) {
+    	for (TLCState errState : this.errorInterface()) {
     		// perform a DFS (on inverse delta) from errState. add every state we find to "states"
     		// discoverDFS will mutate "states"
     		discoverDFS(errState, inverseDelta, states);
