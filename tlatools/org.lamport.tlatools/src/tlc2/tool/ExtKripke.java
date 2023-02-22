@@ -121,6 +121,7 @@ public class ExtKripke {
     // invariant: all states in frontier are safe (not in this.badStates)
     private void calculateErrorInterface(final Set<TLCState> explored, final Set<TLCState> frontier, Set<TLCState> ei) {
     	while (!frontier.isEmpty()) {
+    		Set<TLCState> addToFrontier = new HashSet<TLCState>();
 	    	for (TLCState s : frontier) {
 	    		explored.add(s);
 	    		for (TLCState t : this.succ(s)) {
@@ -128,10 +129,11 @@ public class ExtKripke {
 	    				ei.add(t);
 	    			}
 	    			else if (!explored.contains(t)) {
-	    				frontier.add(t);
+	    				addToFrontier.add(t);
 	    			}
 	    		}
 	    	}
+	    	frontier.addAll(addToFrontier);
 	    	frontier.removeAll(explored);
     	}
     }
