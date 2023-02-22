@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -485,7 +486,10 @@ public class TLC {
         final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
         final String endModule = "=============================================================================";
 
-        ArrayList<String> moduleNameList = filterArray(tlc.getSpecName(), ft.getModuleNames());
+        final List<String> moduleWhiteList =
+        		Arrays.asList("Bags", "FiniteSets", "Functions", "Integers", "Json", "Naturals",
+        				"NaturalsInduction", "RealTime", "Sequences", "SequencesExt", "TLC", "TLCExt");
+        ArrayList<String> moduleNameList = filterArrayWhiteList(moduleWhiteList, ft.getModuleNames());
         ArrayList<String> varNameList = toArrayList(ft.getVarNames());
         vars.addAll(varNameList);
 
@@ -592,11 +596,22 @@ public class TLC {
     	return dst;
     }
     
-    private static ArrayList<String> filterArray(String filter, String[] arr) {
+    private static ArrayList<String> filterArrayBlackList(String filter, String[] arr) {
     	ArrayList<String> filtered = new ArrayList<String>();
     	for (int i = 0; i < arr.length; ++i) {
     		String e = arr[i];
     		if (!filter.equals(e)) {
+    			filtered.add(e);
+    		}
+    	}
+    	return filtered;
+    }
+    
+    private static ArrayList<String> filterArrayWhiteList(List<String> filter, String[] arr) {
+    	ArrayList<String> filtered = new ArrayList<String>();
+    	for (int i = 0; i < arr.length; ++i) {
+    		String e = arr[i];
+    		if (filter.contains(e)) {
     			filtered.add(e);
     		}
     	}
