@@ -25,12 +25,14 @@ rm -f "${module}_TTrace"*
 pushd "${output}"
 
 echo "running error pre"
-java -jar "${tlc_jar}" -deadlock -config Combined_ErrPre.cfg Combined_ErrPre.tla
+java -jar "${tlc_jar}" -deadlock -cleanup -config Combined_ErrPre.cfg Combined_ErrPre.tla
+rm -rf states/
+rm -f "${module}_TTrace"*
 
 echo ""
 echo "running error post"
-java -jar "${tlc_jar}" -deadlock -config Combined_ErrPost.cfg Combined_ErrPost.tla
-
+java -jar "${tlc_jar}" -deadlock -cleanup -config Combined_ErrPost.cfg Combined_ErrPost.tla
 rm -rf states/
 rm -f "${module}_TTrace"*
+
 popd

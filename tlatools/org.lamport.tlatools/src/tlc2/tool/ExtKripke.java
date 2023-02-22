@@ -47,33 +47,26 @@ public class ExtKripke {
     
     // post-processing
     
+    public boolean isEmpty() {
+    	return this.allStates.isEmpty() || this.initStates.isEmpty();
+    }
+    
     public ExtKripke createErrPre() {
     	Set<TLCState> errStates = notAlwaysNotPhiStates();
     	Set<Pair<TLCState,TLCState>> deltaErrSinks = createDeltaWithErrorSinks(badStates, delta);
     	Set<Pair<TLCState,TLCState>> deltaErrPre = filterDeltaByStates(errStates, deltaErrSinks);
     	// no way to add SF yet
     	ExtKripke errPre = new ExtKripke();
-    	errPre.initStates = this.initStates;
+    	errPre.initStates = intersection(this.initStates, errStates);
     	errPre.allStates = errStates;
     	errPre.delta = deltaErrPre;
     	errPre.deltaActions = this.deltaActions;
     	return errPre;
     }
     
-    public Set<TLCState> notAlwaysNotPhiStates() {
-    	Set<TLCState> states = new HashSet<TLCState>();
-    	Set<Pair<TLCState,TLCState>> inverseDelta = invertTransitionRelation(delta);
-    	for (TLCState errState : badStates) {
-    		// perform a DFS (on inverse delta) from errState. add every state we find to "states"
-    		// discoverDFS will mutate "states"
-    		discoverDFS(errState, inverseDelta, states);
-    	}
-    	return states;
-    }
-    
     public ExtKripke createErrPost() {
     	ExtKripke errPost = new ExtKripke();
-    	errPost.initStates = this.badStates;
+    	errPost.initStates = errorInterface();
     	errPost.allStates = this.allStates;
     	errPost.delta = this.delta;
     	errPost.deltaActions = this.deltaActions;
@@ -91,6 +84,68 @@ public class ExtKripke {
         return builder.toString();
     }
 
+    
+    private Set<TLCState> intersection(Set<TLCState> s1, Set<TLCState> s2) {
+    	Set<TLCState> inters = new HashSet<TLCState>();
+    	inters.addAll(s1);
+    	inters.retainAll(s2);
+    	return inters;
+    }
+    
+    private Set<TLCState> setMinus(Set<TLCState> s1, Set<TLCState> s2) {
+    	Set<TLCState> setmin = new HashSet<TLCState>();
+    	setmin.addAll(s1);
+    	setmin.removeAll(s2);
+    	return setmin;
+    }
+    
+    private Set<TLCState> errorInterface() {
+    	Set<TLCState> explored = new HashSet<TLCState>();
+    	explored.addAll(this.initStates);
+    	Set<TLCState> startStates = setMinus(this.initStates, this.badStates);
+    	Set<TLCState> ei = intersection(this.initStates, this.badStates);
+    	calculateErrorInterface(explored, startStates, ei);
+    	return ei;
+    }
+    
+    private Set<TLCState> succ(TLCState s) {
+    	Set<TLCState> succStates = new HashSet<TLCState>();
+    	for (Pair<TLCState,TLCState> t : this.delta) {
+    		if (s.equals(t.first)) {
+    			succStates.add(t.second);
+    		}
+    	}
+    	return succStates;
+    }
+    
+    // invariant: all states in frontier are safe (not in this.badStates)
+    private void calculateErrorInterface(final Set<TLCState> explored, final Set<TLCState> frontier, Set<TLCState> ei) {
+    	while (!frontier.isEmpty()) {
+	    	for (TLCState s : frontier) {
+	    		explored.add(s);
+	    		for (TLCState t : this.succ(s)) {
+	    			if (this.badStates.contains(t)) {
+	    				ei.add(t);
+	    			}
+	    			else if (!explored.contains(t)) {
+	    				frontier.add(t);
+	    			}
+	    		}
+	    	}
+	    	frontier.removeAll(explored);
+    	}
+    }
+    
+    private Set<TLCState> notAlwaysNotPhiStates() {
+    	Set<TLCState> states = new HashSet<TLCState>();
+    	Set<Pair<TLCState,TLCState>> inverseDelta = invertTransitionRelation(delta);
+    	for (TLCState errState : badStates) {
+    		// perform a DFS (on inverse delta) from errState. add every state we find to "states"
+    		// discoverDFS will mutate "states"
+    		discoverDFS(errState, inverseDelta, states);
+    	}
+    	return states;
+    }
 
     private static Set<Pair<TLCState,TLCState>> filterDeltaByStates(Set<TLCState> states, Set<Pair<TLCState,TLCState>> delta) {
     	Set<Pair<TLCState,TLCState>> deltaFiltered = new HashSet<Pair<TLCState,TLCState>>();
@@ -177,7 +232,10 @@ public class ExtKripke {
     }
     
     private String initExpr() {
-    	return "/\\ " + String.join("\n  /\\ ", statesToStringList(this.initStates));
+    	if (this.initStates.isEmpty()) {
+    		return "FALSE";
+    	}
+    	return "\\/ " + String.join("\n  \\/ ", statesToStringList(this.initStates));
     }
 
     private String nextExpr() {
@@ -188,6 +246,9 @@ public class ExtKripke {
     		String post = primeVars(format(t.second.toString()));
     		String action = pre + " /\\ " + post;
     		strTransitions.add(action);
+    	}
+    	if (strTransitions.isEmpty()) {
+    		return "FALSE";
     	}
     	return "\\/ " + String.join("\n  \\/ ", strTransitions);
     }

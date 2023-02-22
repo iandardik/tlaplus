@@ -358,7 +358,7 @@ public class TLC {
     public static void main(String[] args) throws Exception
     {
     	if (args.length < 5) {
-    		System.out.println("usage: tla2tools <spec1> <cfg1> <spec2> <cfg2> <output_loc>");
+    		System.out.println("usage: tlc-ian <spec1> <cfg1> <spec2> <cfg2> <output_loc>");
     		System.exit(0);
     	}
     	final String tla1 = args[0];
@@ -399,7 +399,11 @@ public class TLC {
     	ExtKripke kripke = tlc.getKripke();
     	ExtKripke errPreKripke = kripke.createErrPre();
     	final boolean strongFairness = true; // need SF in err pre
-    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, outputLoc, strongFairness, vars);
+    	final String specName = kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, outputLoc, strongFairness, vars);
+    	if (errPreKripke.isEmpty()) {
+    		System.out.println(specName + " for " + tla + " is empty");
+    	}
+    	return specName;
     }
     
     private static void createErrPost(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2, final String outputLoc) {
@@ -417,9 +421,13 @@ public class TLC {
     
     private static String createErrPost(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
     	ExtKripke kripke = tlc.getKripke();
-    	ExtKripke errPreKripke = kripke.createErrPost();
+    	ExtKripke errPostKripke = kripke.createErrPost();
     	final boolean strongFairness = false; // do not add SF to err post
-    	return kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, outputLoc, strongFairness, vars);
+    	final String specName = kripkeToTLA(tag, tlc, errPostKripke, tla, cfg, outputLoc, strongFairness, vars);
+    	if (errPostKripke.isEmpty()) {
+    		System.out.println(specName + " for " + tla + " is empty");
+    	}
+    	return specName;
     }
     
     private static void combineConfig(final String tag, final String outputLoc) {
