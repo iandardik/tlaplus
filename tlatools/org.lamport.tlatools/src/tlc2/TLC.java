@@ -43,6 +43,8 @@ import tlc2.tool.ITool;
 import tlc2.tool.ModelChecker;
 import tlc2.tool.Simulator;
 import tlc2.tool.SingleThreadedSimulator;
+import tlc2.tool.TLCState;
+import tlc2.tool.ExtKripke.Pair;
 import tlc2.tool.fp.FPSet;
 import tlc2.tool.fp.FPSetConfiguration;
 import tlc2.tool.fp.FPSetFactory;
@@ -356,6 +358,10 @@ public class TLC {
      *		Defaults to 1000000
      *   
      */
+	
+	/*
+	 * We compute whether \eta(spec1,P) \subseteq \eta(spec2,P)
+	 */
     public static void main(String[] args) throws Exception
     {
     	if (args.length < 5) {
@@ -377,6 +383,16 @@ public class TLC {
     	// create err pre TLA+ spec
     	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc);
     	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc);
+    	
+    	// compute the representation for \eta(spec2,P) - \eta(spec1,P)
+    	ExtKripke errPre1 = tlc1.getKripke().createErrPre();
+    	ExtKripke errPre2 = tlc2.getKripke().createErrPre();
+    	Set<Pair<TLCState,Action>> diffRep = ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2);
+    	for (Pair<TLCState,Action> rep : diffRep) {
+    		final String stateRep = rep.first.toString();
+    		final String actRep = rep.second.toString();
+    		System.out.println("(" + stateRep + ", " + actRep + ")");
+    	}
     	
     	System.out.println("Done");
     	
@@ -457,8 +473,8 @@ public class TLC {
         
         final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + instanceWithList(varNameList1);
         final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + instanceWithList(varNameList2);
-        final String specDef = "Spec == S1!Spec";
-        final String safetyDef = "Safety == S2!Spec";
+        final String specDef = "Spec == S2!Spec";
+        final String safetyDef = "Safety == S1!Spec";
 
         StringBuilder builder = new StringBuilder();
         builder.append(specDecl).append("\n");

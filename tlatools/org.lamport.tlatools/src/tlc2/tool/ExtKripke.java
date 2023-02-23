@@ -85,14 +85,14 @@ public class ExtKripke {
     }
 
     
-    private Set<TLCState> intersection(Set<TLCState> s1, Set<TLCState> s2) {
+    private static Set<TLCState> intersection(Set<TLCState> s1, Set<TLCState> s2) {
     	Set<TLCState> inters = new HashSet<TLCState>();
     	inters.addAll(s1);
     	inters.retainAll(s2);
     	return inters;
     }
     
-    private Set<TLCState> setMinus(Set<TLCState> s1, Set<TLCState> s2) {
+    private static Set<TLCState> setMinus(Set<TLCState> s1, Set<TLCState> s2) {
     	Set<TLCState> setmin = new HashSet<TLCState>();
     	setmin.addAll(s1);
     	setmin.removeAll(s2);
@@ -189,6 +189,24 @@ public class ExtKripke {
     			discoverDFS(t.second, delta, states);
     		}
     	}
+    }
+    
+    
+    public static Set<Pair<TLCState,Action>> behaviorDifferenceRepresentation(ExtKripke m1, ExtKripke m2) {
+    	Set<TLCState> states = intersection(m1.allStates, m2.allStates);
+    	Set<Pair<TLCState,Action>> rep = new HashSet<Pair<TLCState,Action>>();
+    	for (TLCState s : states) {
+    		for (Pair<TLCState,TLCState> t1 : m1.delta) {
+    			if (s.equals(t1.first)) {
+    				if (!m2.delta.contains(t1)) {
+    					// found outgoing transition that is ONLY in m1
+    					final Action act = m1.deltaActions.get(t1);
+    					rep.add(new Pair<TLCState,Action>(s, act));
+    				}
+    			}
+    		}
+    	}
+    	return rep;
     }
     
     
@@ -368,7 +386,7 @@ public class ExtKripke {
     }
 
 
-    private static class Pair<A,B> {
+    public static class Pair<A,B> {
         public A first;
         public B second;
         
