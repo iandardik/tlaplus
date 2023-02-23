@@ -387,11 +387,16 @@ public class TLC {
     	// compute the representation for \eta(spec2,P) - \eta(spec1,P)
     	ExtKripke errPre1 = tlc1.getKripke().createErrPre();
     	ExtKripke errPre2 = tlc2.getKripke().createErrPre();
-    	Set<Pair<TLCState,Action>> diffRep = ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2);
+    	ExtKripke errPost1 = tlc1.getKripke().createErrPost();
+    	ExtKripke errPost2 = tlc2.getKripke().createErrPost();
+    	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
+    			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
+    			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
     	for (Pair<TLCState,Action> rep : diffRep) {
     		final String stateRep = rep.first.toString();
-    		final String actRep = rep.second.toString();
-    		System.out.println("(" + stateRep + ", " + actRep + ")");
+    		final String actRep = rep.second.getName().toString();
+    		System.out.println(stateRep + actRep);
+    		//System.out.println("(" + stateRep + ", " + actRep + ")");
     	}
     	
     	System.out.println("Done");

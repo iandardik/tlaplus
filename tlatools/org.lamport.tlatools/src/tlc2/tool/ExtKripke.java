@@ -84,16 +84,23 @@ public class ExtKripke {
         return builder.toString();
     }
 
+
+    public static <T> Set<T> union(Set<T> s1, Set<T> s2) {
+    	Set<T> un = new HashSet<T>();
+    	un.addAll(s1);
+    	un.addAll(s2);
+    	return un;
+    }
     
-    private static Set<TLCState> intersection(Set<TLCState> s1, Set<TLCState> s2) {
-    	Set<TLCState> inters = new HashSet<TLCState>();
+    public static <T> Set<T> intersection(Set<T> s1, Set<T> s2) {
+    	Set<T> inters = new HashSet<T>();
     	inters.addAll(s1);
     	inters.retainAll(s2);
     	return inters;
     }
     
-    private static Set<TLCState> setMinus(Set<TLCState> s1, Set<TLCState> s2) {
-    	Set<TLCState> setmin = new HashSet<TLCState>();
+    public static <T> Set<T> setMinus(Set<T> s1, Set<T> s2) {
+    	Set<T> setmin = new HashSet<T>();
     	setmin.addAll(s1);
     	setmin.removeAll(s2);
     	return setmin;
@@ -191,22 +198,45 @@ public class ExtKripke {
     	}
     }
     
-    
-    public static Set<Pair<TLCState,Action>> behaviorDifferenceRepresentation(ExtKripke m1, ExtKripke m2) {
-    	Set<TLCState> states = intersection(m1.allStates, m2.allStates);
-    	Set<Pair<TLCState,Action>> rep = new HashSet<Pair<TLCState,Action>>();
-    	for (TLCState s : states) {
-    		for (Pair<TLCState,TLCState> t1 : m1.delta) {
+    // compute the representation for \eta(m2,P) - \eta(m1,P)
+    // note: \eta(m2,P) - \eta(m1,P) = beh(m1_err) - beh(m2_err)
+    // i.e. we find all erroneous behaviors of m1 that are NOT erroneous behaviors of m2
+    public static Set<Pair<TLCState,Action>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2) {
+    	final Set<TLCState> mutualReach = mutualReach(m1, m2);
+    	final Set<Pair<TLCState,TLCState>> m1MinusM2Delta = setMinus(m1.delta, m2.delta);
+    	final Set<Pair<TLCState,Action>> rep = new HashSet<Pair<TLCState,Action>>();
+    	for (TLCState s : mutualReach) {
+    		for (Pair<TLCState,TLCState> t1 : m1MinusM2Delta) {
     			if (s.equals(t1.first)) {
-    				if (!m2.delta.contains(t1)) {
-    					// found outgoing transition that is ONLY in m1
-    					final Action act = m1.deltaActions.get(t1);
-    					rep.add(new Pair<TLCState,Action>(s, act));
-    				}
+					// found an outgoing transition (of ONLY m1) from s
+					final Action act = m1.deltaActions.get(t1);
+					rep.add(new Pair<TLCState,Action>(s, act));
     			}
     		}
     	}
     	return rep;
+    }
+    
+    private static Set<TLCState> mutualReach(final ExtKripke m1, final ExtKripke m2) {
+    	Set<TLCState> reach = new HashSet<TLCState>();
+    	Set<TLCState> mutualInit = intersection(m1.initStates, m2.initStates);
+    	Set<Pair<TLCState,TLCState>> mutualDelta = intersection(m1.delta, m2.delta);
+    	for (TLCState init : mutualInit) {
+        	mutualReach(m1, m2, mutualDelta, init, reach);
+    	}
+    	return reach;
+    }
+    
+    private static void mutualReach(final ExtKripke m1, final ExtKripke m2, final Set<Pair<TLCState,TLCState>> mutualDelta, final TLCState init, Set<TLCState> reach) {
+    	reach.add(init);
+    	for (Pair<TLCState,TLCState> t : mutualDelta) {
+    		if (init.equals(t.first)) {
+    			TLCState succ = t.second;
+    			if (!reach.contains(succ)) {
+    				mutualReach(m1, m2, mutualDelta, succ, reach);
+    			}
+    		}
+    	}
     }
     
     
