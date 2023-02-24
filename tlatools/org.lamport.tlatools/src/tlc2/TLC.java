@@ -385,25 +385,129 @@ public class TLC {
     	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc);
     	
     	// compute the representation for \eta(spec2,P) - \eta(spec1,P)
-    	ExtKripke errPre1 = tlc1.getKripke().createErrPre();
-    	ExtKripke errPre2 = tlc2.getKripke().createErrPre();
-    	ExtKripke errPost1 = tlc1.getKripke().createErrPost();
-    	ExtKripke errPost2 = tlc2.getKripke().createErrPost();
-    	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
-    			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
-    			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
-    	for (Pair<TLCState,Action> rep : diffRep) {
-    		final String stateRep = rep.first.toString();
-    		final String actRep = rep.second.getName().toString();
-    		System.out.println(stateRep + actRep);
-    		//System.out.println("(" + stateRep + ", " + actRep + ")");
-    	}
+    	computeDiffRep(tlc1, tlc2, outputLoc);
     	
     	System.out.println("Done");
     	
     	System.exit(0);
     }
     
+    private static void computeDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc) {
+    	ExtKripke errPre1 = tlc1.getKripke().createErrPre();
+    	ExtKripke errPre2 = tlc2.getKripke().createErrPre();
+    	ExtKripke errPost1 = tlc1.getKripke().createErrPost();
+    	ExtKripke errPost2 = tlc2.getKripke().createErrPost();
+    	
+    	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
+    	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
+    			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
+    			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
+    	Set<TLCState> diffStates = ExtKripke.projectFirst(diffRep);
+    	Set<String> diffStateStrs = stateSetToStringSet(diffStates);
+    	
+    	// compute the entire state space
+    	TLC tlcTypeOK = new TLC();
+    	runTLCExtractStateSpace(tlc1, tlc2, outputLoc, tlcTypeOK);
+    	ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
+    	Set<TLCState> stateSpace = stateSpaceKripke.reach();
+    	Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
+    	
+    	// negative examples
+    	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffStateStrs);
+    	System.out.println("not diff states size: " + notDiffStateStrs.size());
+    	
+    	// print
+    	StringBuilder builder = new StringBuilder();
+    	builder.append("(sort PC)\n");
+    	builder.append("(sort Voters)\n");
+    	builder.append("(sort Candidates)\n");
+    	builder.append("\n");
+    	builder.append("(relation state PC)\n");
+    	builder.append("(relation booth Voters)\n");
+    	builder.append("(relation voterChoice Candidates)\n");
+    	builder.append("(relation eoChoice Candidates)\n");
+    	builder.append("(relation eoConfirm Candidates)\n");
+    	builder.append("\n");
+    	builder.append("(constant confirmConst PC)\n");
+    	builder.append("(constant eofficialConst Voters)\n");
+    	builder.append("(constant NoneConst Candidates)\n");
+    	builder.append("(constant IanConst Candidates)\n");
+    	builder.append("(constant DavidConst Candidates)\n");
+    	builder.append("(constant KevinConst Candidates)\n\n");
+    	for (String s : diffStateStrs) {
+    		builder.append(toSeparatorModel(s, "+"));
+    	}
+    	for (String s : notDiffStateStrs) {
+    		builder.append(toSeparatorModel(s, "-"));
+    	}
+    	
+    	final String separatorFile = "sep";
+    	final String file = outputLoc + separatorFile + ".fol";
+        writeFile(file, builder.toString());
+    }
+    
+    public static String toSeparatorModel(String tlaState, String label) {
+    	final String sms = toSeparatorModelString(tlaState);
+    	if (sms.equals("")) {
+    		return "";
+    	}
+
+        StringBuilder builder = new StringBuilder();
+    	builder.append("(model ").append(label).append("\n");
+    	builder.append("    ((confirm PC) (eofficial Voters) (None Candidates) (Ian Candidates) (David Candidates) (Kevin Candidates))\n");
+    	builder.append("    (= confirmConst confirm)\n");
+    	builder.append("    (= eofficialConst eofficial)\n");
+    	builder.append("    (= NoneConst None)\n");
+    	builder.append("    (= IanConst Ian)\n");
+    	builder.append("    (= DavidConst David)\n");
+    	builder.append("    (= KevinConst Kevin)\n");
+    	builder.append(sms);
+    	builder.append("\n)\n");
+        return builder.toString();
+    }
+    
+    public static String toSeparatorModelString(String tlaState) {
+    	String[] conjuncts = tlaState.split(Pattern.quote("/\\"));
+    	for (int i = 0; i < conjuncts.length; ++i) {
+    		final String tlaConjunct = conjuncts[i];
+    		String[] kvp = tlaConjunct.split("=");
+    		assert(kvp.length == 2);
+    		final String key = kvp[0].trim();
+    		final String val = kvp[1].trim().replaceAll("[\"{}]+", "").trim();
+    		final String separatorConjunct = "    (" + key + " " + val + ")";
+    		conjuncts[i] = separatorConjunct;
+            //idardik hack for omitting some models
+    		if (key.equals("state") && !val.equals("confirm")) {
+    			return "";
+    		}
+            //idardik hack for omitting some models
+    		if (key.equals("booth") && !val.equals("eofficial")) {
+    			return "";
+    		}
+    	}
+		return String.join("\n", conjuncts);
+    }
+    
+    public static Set<String> stateSetToStringSet(Set<TLCState> src) {
+    	Set<String> dst = new HashSet<String>();
+    	for (TLCState s : src) {
+    		final String state = normalizeStateString(s.toString());
+    		dst.add(state);
+    	}
+    	return dst;
+    }
+    
+    public static String normalizeStateString(String s) {
+		//String[] conjuncts = s.replace('\n', ' ').trim().split(Pattern.quote("\\s*/\\\\s*"));
+    	String[] conjuncts = s.split(Pattern.quote("\n"));
+    	for (int i = 0; i < conjuncts.length; ++i) {
+    		final String orig = conjuncts[i];
+    		conjuncts[i] = orig.replaceAll(Pattern.quote("/\\"), "").trim();
+    	}
+		Arrays.sort(conjuncts);
+		return String.join(" /\\ ", conjuncts);
+	}
+	
     private static void createErrPre(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2, final String outputLoc) {
     	// collect state variables from each spec
     	Set<String> vars1 = new HashSet<String>();
@@ -457,8 +561,8 @@ public class TLC {
         builder.append("SPECIFICATION Spec").append("\n");
         builder.append("PROPERTY Safety");
         
-        final String name = outputLoc + "Combined_" + tag + ".cfg";
-        writeFile(name, builder.toString());
+        final String file = outputLoc + "Combined_" + tag + ".cfg";
+        writeFile(file, builder.toString());
     }
     
     private static void combineSpec(final String tag, final String specName1, final String specName2, final Set<String> vars1, final Set<String> vars2, final String outputLoc) {
@@ -496,6 +600,70 @@ public class TLC {
         
         final String name = outputLoc + specName + ".tla";
         writeFile(name, builder.toString());
+    }
+    
+    private static void runTLCExtractStateSpace(final TLC tlc1, final TLC tlc2, final String outputLoc, TLC tlcTypeOK) {
+    	final String typeOKInv = "TypeOK";
+    	final boolean bothHaveTypeOK = hasInvariant(tlc1, typeOKInv) && hasInvariant(tlc2, typeOKInv);
+    	if (!bothHaveTypeOK) {
+        	System.out.println("At least one spec doesn't have a  TypeOK");
+    		return;
+    	}
+    	
+    	System.out.println("Both specs have a TypeOK");
+
+        final String specName = "CombinedTypeOK";
+        final String tlaFile = stateSpaceTLA(specName, tlc1, tlc2, outputLoc);
+        final String cfgFile = stateSpaceConfig(specName, outputLoc);
+
+    	runTLC(tlaFile, cfgFile, tlcTypeOK);
+    }
+    
+    private static String stateSpaceTLA(final String specName, final TLC tlc1, final TLC tlc2, final String outputLoc) {
+        final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
+        final String endModule = "=============================================================================";
+        
+        FastTool ft1 = (FastTool) tlc1.tool;
+        FastTool ft2 = (FastTool) tlc2.tool;
+        ArrayList<String> varNameList1 = toArrayList(ft1.getVarNames());
+        ArrayList<String> varNameList2 = toArrayList(ft2.getVarNames());
+        Set<String> combineVarNames = new HashSet<String>();
+        combineVarNames.addAll(varNameList1);
+        combineVarNames.addAll(varNameList2);
+        
+        final String varList = String.join(", ", combineVarNames);
+        final String varsDecl = "VARIABLES " + varList;
+        
+        final String specName1 = tlc1.getSpecName();
+        final String specName2 = tlc2.getSpecName();
+        final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + instanceWithList(varNameList1);
+        final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + instanceWithList(varNameList2);
+        final String typeOKDef = "TypeOK == S1!TypeOK /\\ S2!TypeOK";
+        
+        StringBuilder builder = new StringBuilder();
+        builder.append(specDecl).append("\n");
+        builder.append(varsDecl).append("\n");
+        builder.append("\n");
+        builder.append(spec1).append("\n");
+        builder.append(spec2).append("\n");
+        builder.append(typeOKDef).append("\n");
+        builder.append(endModule).append("\n");
+        builder.append("\n");
+        
+        final String file = outputLoc + specName + ".tla";
+        writeFile(file, builder.toString());
+        
+        return file;
+    }
+    
+    private static String stateSpaceConfig(final String specName, final String outputLoc) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("SPECIFICATION TypeOK");
+        
+        final String file = outputLoc + specName + ".cfg";
+        writeFile(file, builder.toString());
+        
+        return file;
     }
     
     private static String kripkeToTLA(final String tag, final TLC tlc, final ExtKripke kripke,
@@ -592,6 +760,16 @@ public class TLC {
         System.setOut(origPrintStream);
     }
     
+    private static boolean hasInvariant(final TLC tlc, final String inv) {
+    	for (Action i : tlc.tool.getInvariants()) {
+    		final String name = i.getName().toString();
+    		if (inv.equals(name)) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+    
     private static String instanceWithList(ArrayList<String> vars) {
     	ArrayList<String> varArrowList = new ArrayList<String>();
     	for (String var : vars) {
@@ -601,16 +779,16 @@ public class TLC {
     	return String.join(", ", varArrowList);
     }
 
-    private static ArrayList<String> toArrayList(Set<String> src) {
-    	ArrayList<String> dst = new ArrayList<String>();
-    	for (String s : src) {
+    private static <T> ArrayList<T> toArrayList(Set<T> src) {
+    	ArrayList<T> dst = new ArrayList<T>();
+    	for (T s : src) {
     		dst.add(s);
     	}
     	return dst;
     }
 
-    private static ArrayList<String> toArrayList(String[] src) {
-    	ArrayList<String> dst = new ArrayList<String>();
+    private static <T> ArrayList<T> toArrayList(T[] src) {
+    	ArrayList<T> dst = new ArrayList<T>();
     	for (int i = 0; i < src.length; ++i) {
     		dst.add(src[i]);
     	}

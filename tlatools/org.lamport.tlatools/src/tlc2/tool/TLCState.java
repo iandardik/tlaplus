@@ -213,7 +213,8 @@ public abstract class TLCState implements Cloneable, Serializable {
 	}
 	
 	
-	private static String format(TLCState s) {
+	
+	public static String format(TLCState s) {
     	return format(s.toString());
     }
     

@@ -9,6 +9,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import tlc2.tool.ExtKripke.Pair;
+
 import java.lang.StringBuilder;
 
 
@@ -49,6 +52,10 @@ public class ExtKripke {
     
     public boolean isEmpty() {
     	return this.allStates.isEmpty() || this.initStates.isEmpty();
+    }
+    
+    public Set<TLCState> reach() {
+    	return this.allStates;
     }
     
     public ExtKripke createErrPre() {
@@ -433,11 +440,19 @@ public class ExtKripke {
         @Override
         public boolean equals(Object other) {
         	if (other instanceof Pair<?,?>) {
-        		Pair p = (Pair) other;
+        		Pair<?,?> p = (Pair<?,?>) other;
         		return this.first.equals(p.first) && this.second.equals(p.second);
         	}
         	return false;
         }
+    }
+    
+    public static <A,B> Set<A> projectFirst(Set<Pair<A,B>> set) {
+    	Set<A> proj = new HashSet<A>();
+    	for (Pair<A,B> e : set) {
+    		proj.add(e.first);
+    	}
+    	return proj;
     }
     
     private static String format(TLCState s) {

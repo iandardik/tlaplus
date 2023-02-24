@@ -76,14 +76,15 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
+OnePersonInBooth == Cardinality(booth) <= 1
+
 TypeOK ==
     /\ booth \in SUBSET Voters
+    /\ OnePersonInBooth \* will help make TypeOK space smaller
     /\ voterChoice \in Candidates \cup {"None"}
     /\ eoChoice \in Candidates \cup {"None"}
     /\ eoConfirm \in Candidates \cup {"None"}
     \*/\ choice \in [Voters -> Candidates]
-
-OnePersonInBooth == Cardinality(booth) <= 1
 
 NoVoteFlip == eoConfirm = "None" \/ eoConfirm = voterChoice
 EOCannotConfirm == eoConfirm = "None"
