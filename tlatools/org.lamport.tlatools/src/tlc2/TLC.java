@@ -43,6 +43,7 @@ import tlc2.tool.ITool;
 import tlc2.tool.ModelChecker;
 import tlc2.tool.Simulator;
 import tlc2.tool.SingleThreadedSimulator;
+import tlc2.tool.StateVarType;
 import tlc2.tool.TLCState;
 import tlc2.tool.ExtKripke.Pair;
 import tlc2.tool.fp.FPSet;
@@ -403,7 +404,26 @@ public class TLC {
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
     	Set<TLCState> diffStates = ExtKripke.projectFirst(diffRep);
-    	Set<String> diffStateStrs = stateSetToStringSet(diffStates);
+    	Set<String> diffStateStrs = stateSetToStringSet(diffStates); // positive examples
+    	
+    	/*
+    	// if TypeOK doesnt exist or is in the wrong format then bail out (for now TODO)
+    	// otherwise, extract the type of each state variable
+    	//tlc1.tool.getInvariants();
+    	FastTool ft1 = (FastTool) tlc1.tool;
+    	//ft1.getVarNames();
+    	Defns defns = ft1.getDefns();
+    	Object o = defns.get("Iface!TypeOK");
+    	if (!(o instanceof OpDefNode)) {
+    		throw new RuntimeException("Unexpected defn type for TypeOK!");
+    	}
+    	OpDefNode defNodeTypeOK = (OpDefNode) o;
+    	TreeNode n = defNodeTypeOK.getTreeNode();
+    	if (!(n instanceof SyntaxTreeNode)) {
+    		throw new RuntimeException("Unexpected TreeNode type for TypeOK!");
+    	}
+    	SyntaxTreeNode node = (SyntaxTreeNode) n;
+    	node.printST(1);*/
     	
     	// compute the entire state space
     	TLC tlcTypeOK = new TLC();
@@ -416,79 +436,150 @@ public class TLC {
     	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffStateStrs);
     	System.out.println("not diff states size: " + notDiffStateStrs.size());
     	
-    	// print
+    	// we can automatically extract types by looking at the states in stateSpace.
+    	// there is no need to examine TypeOK
+    	// TODO it would be a nice sanity check to make sure the vars in varTypes match those in tlc1 and tlc2
+    	// TODO type domains should be mutually exclusive, we need to bail if they aren't
+    	Set<StateVarType> types = StateVarType.determineTypes(stateSpaceStrs);
+    	Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpaceStrs);
+    	
+    	// in the diffStates, figure out which state vars may have multiple values.
+    	// we will then attempt to create a formula to figure out which values we want.
+    	// we abuse the word "type" in StateVarType here.
+    	Map<String, StateVarType> diffStateVarDomains = StateVarType.determineVarTypes(diffStateStrs);
+    	Set<StateVarType> nonConstValueTypes = new HashSet<>();
+    	Set<String> nonConstValueVars = new HashSet<>();
+    	Set<String> constValueVars = new HashSet<>();
+    	Map<String, String> constValueValues = new HashMap<>();
+    	for (String var : diffStateVarDomains.keySet()) {
+    		StateVarType t = diffStateVarDomains.get(var);
+    		assert(t.getDomain().size() > 0);
+    		if (t.getDomain().size() == 1) {
+    			final String exactValue = ExtKripke.singletonGetElement(t.getDomain());
+    			constValueVars.add(var);
+    			constValueValues.put(var, exactValue);
+    		} else {
+    			StateVarType varType = varTypes.get(var);
+    			nonConstValueTypes.add(varType);
+    			nonConstValueVars.add(var);
+    		}
+    	}
+    	
+    	Set<String> consts = new HashSet<>();
+    	Set<String> modelElements = new HashSet<>();
+    	Set<String> modelElementDefs = new HashSet<>();
+    	for (StateVarType type : nonConstValueTypes) {
+    		String typeName = type.getName();
+    		for (String elem : type.getDomain()) {
+    	    	consts.add("(constant " + elem + " " + typeName + ")");
+    	    	modelElements.add("(" + elem + "Const " + typeName + ")");
+    	    	modelElementDefs.add("(= " + elem + " " + elem + "Const)");
+    		}
+    	}
+    	Set<String> sorts = new HashSet<>();
+    	for (StateVarType type : nonConstValueTypes) {
+    		sorts.add("(sort " + type.getName() + ")");
+    	}
+    	
+    	
+    	// create FOL separator file
     	StringBuilder builder = new StringBuilder();
-    	builder.append("(sort PC)\n");
-    	builder.append("(sort Voters)\n");
-    	builder.append("(sort Candidates)\n");
+    	
+    	// types (sorts)
+    	builder.append(String.join("\n", sorts));
+    	builder.append("\n\n");
+    	
+    	// state variables (relations)
+    	for (String var : nonConstValueVars) {
+    		StateVarType type = varTypes.get(var);
+    		builder.append("(relation " + var + " " + type.getName() + ")\n");
+    	}
     	builder.append("\n");
-    	builder.append("(relation state PC)\n");
-    	builder.append("(relation booth Voters)\n");
-    	builder.append("(relation voterChoice Candidates)\n");
-    	builder.append("(relation eoChoice Candidates)\n");
-    	builder.append("(relation eoConfirm Candidates)\n");
-    	builder.append("\n");
-    	builder.append("(constant confirmConst PC)\n");
-    	builder.append("(constant eofficialConst Voters)\n");
-    	builder.append("(constant NoneConst Candidates)\n");
-    	builder.append("(constant IanConst Candidates)\n");
-    	builder.append("(constant DavidConst Candidates)\n");
-    	builder.append("(constant KevinConst Candidates)\n\n");
+    	
+    	// constants
+    	builder.append(String.join("\n", consts));
+    	builder.append("\n\n");
+    	
+    	// models
+    	Set<String> posModels = new HashSet<>();
     	for (String s : diffStateStrs) {
-    		builder.append(toSeparatorModel(s, "+"));
+    		final String pos = toSeparatorModel(s, "+", modelElements, modelElementDefs, nonConstValueVars);
+    		posModels.add(pos);
+    		builder.append(pos);
     	}
     	for (String s : notDiffStateStrs) {
-    		builder.append(toSeparatorModel(s, "-"));
+    		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVars);
+    		if (!posModels.contains(neg.replace('-', '+'))) {
+    			builder.append(neg);
+    		}
     	}
     	
     	final String separatorFile = "sep";
     	final String file = outputLoc + separatorFile + ".fol";
         writeFile(file, builder.toString());
+        
+        // the const value constraint
+        Set<String> constraints = new HashSet<>();
+        for (String var : constValueVars) {
+        	final String val = constValueValues.get(var);
+        	final String constraint = var + " = " + val;
+        	constraints.add(constraint);
+        }
+        final String constValueConstraint = "/\\ " + String.join("\n/\\ ", constraints);
+        System.out.println(constValueConstraint);
     }
     
-    public static String toSeparatorModel(String tlaState, String label) {
-    	final String sms = toSeparatorModelString(tlaState);
-    	if (sms.equals("")) {
-    		return "";
-    	}
-
+    private static String toSeparatorModel(String tlaState, String label, Set<String> modelElements, Set<String> modelElementDefs, Set<String> nonConstValueVars) {
+    	final String sms = toSeparatorModelString(tlaState, nonConstValueVars);
+    	final String elementsStr = String.join(" ", modelElements);
+    	
         StringBuilder builder = new StringBuilder();
     	builder.append("(model ").append(label).append("\n");
-    	builder.append("    ((confirm PC) (eofficial Voters) (None Candidates) (Ian Candidates) (David Candidates) (Kevin Candidates))\n");
-    	builder.append("    (= confirmConst confirm)\n");
-    	builder.append("    (= eofficialConst eofficial)\n");
-    	builder.append("    (= NoneConst None)\n");
-    	builder.append("    (= IanConst Ian)\n");
-    	builder.append("    (= DavidConst David)\n");
-    	builder.append("    (= KevinConst Kevin)\n");
+    	builder.append("    (");
+    	builder.append(elementsStr);
+    	builder.append(")\n");
+    	for (String elemDef : modelElementDefs) {
+        	builder.append("    " + elemDef + "\n");
+    	}
     	builder.append(sms);
     	builder.append("\n)\n");
         return builder.toString();
     }
     
-    public static String toSeparatorModelString(String tlaState) {
+    private static String toSeparatorModelString(String tlaState, Set<String> nonConstValueVars) {
+    	ArrayList<String> separatorConjuncts = new ArrayList<>();
+    	ArrayList<Pair<String,String>> stateAssignments = extractKeyValuePairsFromState(tlaState);
+    	for (Pair<String,String> assg : stateAssignments) {
+    		final String var = assg.first;
+    		if (nonConstValueVars.contains(var)) {
+        		final String val = assg.second + "Const";
+        		final String sepConjunct = "    (" + var + " " + val + ")";
+        		separatorConjuncts.add(sepConjunct);
+    		}
+    	}
+		return String.join("\n", separatorConjuncts);
+    }
+    
+    public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {
+    	ArrayList<Pair<String,String>> kvPairs = new ArrayList<>();
     	String[] conjuncts = tlaState.split(Pattern.quote("/\\"));
     	for (int i = 0; i < conjuncts.length; ++i) {
     		final String tlaConjunct = conjuncts[i];
-    		String[] kvp = tlaConjunct.split("=");
-    		assert(kvp.length == 2);
-    		final String key = kvp[0].trim();
-    		final String val = kvp[1].trim().replaceAll("[\"{}]+", "").trim();
-    		final String separatorConjunct = "    (" + key + " " + val + ")";
-    		conjuncts[i] = separatorConjunct;
-            //idardik hack for omitting some models
-    		if (key.equals("state") && !val.equals("confirm")) {
-    			return "";
-    		}
-            //idardik hack for omitting some models
-    		if (key.equals("booth") && !val.equals("eofficial")) {
-    			return "";
-    		}
+    		final Pair<String,String> kvPair = extractKeyValuePairFromAssignment(tlaConjunct);
+    		kvPairs.add(kvPair);
     	}
-		return String.join("\n", conjuncts);
+    	return kvPairs;
     }
     
-    public static Set<String> stateSetToStringSet(Set<TLCState> src) {
+    private static Pair<String, String> extractKeyValuePairFromAssignment(String assg) {
+    	String[] kvp = assg.split("=");
+		assert(kvp.length == 2);
+		final String key = kvp[0].trim();
+		final String val = kvp[1].trim().replaceAll("[\"{}]+", "").trim();
+		return new Pair<>(key,val);
+    }
+    
+    private static Set<String> stateSetToStringSet(Set<TLCState> src) {
     	Set<String> dst = new HashSet<String>();
     	for (TLCState s : src) {
     		final String state = normalizeStateString(s.toString());
@@ -497,7 +588,7 @@ public class TLC {
     	return dst;
     }
     
-    public static String normalizeStateString(String s) {
+    private static String normalizeStateString(String s) {
 		//String[] conjuncts = s.replace('\n', ' ').trim().split(Pattern.quote("\\s*/\\\\s*"));
     	String[] conjuncts = s.split(Pattern.quote("\n"));
     	for (int i = 0; i < conjuncts.length; ++i) {

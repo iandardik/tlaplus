@@ -113,6 +113,15 @@ public class ExtKripke {
     	return setmin;
     }
     
+    public static <T> T singletonGetElement(Set<T> set) {
+    	assert(set.size() == 1);
+    	T elem = null;
+    	for (T e : set) {
+    		elem = e;
+    	}
+    	return elem;
+    }
+    
     private Set<TLCState> errorInterface() {
     	Set<TLCState> explored = new HashSet<TLCState>();
     	explored.addAll(this.initStates);
