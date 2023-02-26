@@ -437,24 +437,19 @@ public class TLC {
     	Set<String> nonConstValueVars = new HashSet<>();
     	Set<String> constValueVars = new HashSet<>();
     	Map<String, String> constValueValues = new HashMap<>();
-    	for (String var : diffStateVarDomains.keySet()) {
-    		StateVarType t = diffStateVarDomains.get(var);
-    		assert(t.getDomain().size() > 0);
-    		if (t.getDomain().size() == 1) {
-    			final String exactValue = ExtKripke.singletonGetElement(t.getDomain());
-    			constValueVars.add(var);
-    			constValueValues.put(var, exactValue);
-    		} else {
-    			StateVarType varType = varTypes.get(var);
-    			nonConstValueTypes.add(varType);
-    			nonConstValueVars.add(var);
-    		}
-    	}
-    	if (nonConstValueVars.size() == 0) {
-    		System.out.println("no non-const values in the diff rep set, not generating separator file.");
-    		return;
-    	}
+    	determineConstAndNonConstDiffStateVars(diffStateVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
     	
+    	if (nonConstValueVars.size() > 0) {
+        	buildAndWriteSeparatorFOL(diffStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc);
+        	buildAndPrintConstValueConstraint(constValueVars, constValueValues);
+    	}
+    	else {
+    		System.out.println("no non-const values in the diff rep set, not generating separator file.");
+    	}
+    }
+    
+    private static void buildAndWriteSeparatorFOL(final Set<String> diffStateStrs, final Map<String, StateVarType> varTypes, final Set<String> notDiffStateStrs,
+    		final Set<StateVarType> nonConstValueTypes, final Set<String> nonConstValueVars, final String outputLoc) {
     	Set<String> consts = new HashSet<>();
     	Set<String> modelElements = new HashSet<>();
     	Set<String> modelElementDefs = new HashSet<>();
@@ -507,8 +502,9 @@ public class TLC {
     	final String separatorFile = "sep";
     	final String file = outputLoc + separatorFile + ".fol";
         writeFile(file, builder.toString());
-        
-        // the const value constraint
+    }
+
+    private static void buildAndPrintConstValueConstraint(final Set<String> constValueVars, final Map<String, String> constValueValues) {
         Set<String> constraints = new HashSet<>();
         for (String var : constValueVars) {
         	final String val = constValueValues.get(var);
@@ -516,8 +512,25 @@ public class TLC {
         	constraints.add(constraint);
         }
         final String constValueConstraint = "/\\ " + String.join("\n/\\ ", constraints);
-        System.out.println("Const part of the diff rep:");
+        System.out.println("const part of the diff rep:");
         System.out.println(constValueConstraint);
+    }
+    
+    private static void determineConstAndNonConstDiffStateVars(final Map<String, StateVarType> diffStateVarDomains, final Map<String, StateVarType> varTypes,
+    		Set<StateVarType> nonConstValueTypes, Set<String> nonConstValueVars, Set<String> constValueVars, Map<String, String> constValueValues) {
+    	for (String var : diffStateVarDomains.keySet()) {
+    		StateVarType t = diffStateVarDomains.get(var);
+    		assert(t.getDomain().size() > 0);
+    		if (t.getDomain().size() == 1) {
+    			final String exactValue = ExtKripke.singletonGetElement(t.getDomain());
+    			constValueVars.add(var);
+    			constValueValues.put(var, exactValue);
+    		} else {
+    			StateVarType varType = varTypes.get(var);
+    			nonConstValueTypes.add(varType);
+    			nonConstValueVars.add(var);
+    		}
+    	}
     }
     
     private static String toSeparatorModel(String tlaState, String label, Set<String> modelElements, Set<String> modelElementDefs, Set<String> nonConstValueVars) {
