@@ -403,27 +403,13 @@ public class TLC {
     	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
+    	if (diffRep.size() == 0) {
+    		System.out.println("diff rep set is empty, not generating separator file.");
+    		return;
+    	}
+    	
     	Set<TLCState> diffStates = ExtKripke.projectFirst(diffRep);
     	Set<String> diffStateStrs = stateSetToStringSet(diffStates); // positive examples
-    	
-    	/*
-    	// if TypeOK doesnt exist or is in the wrong format then bail out (for now TODO)
-    	// otherwise, extract the type of each state variable
-    	//tlc1.tool.getInvariants();
-    	FastTool ft1 = (FastTool) tlc1.tool;
-    	//ft1.getVarNames();
-    	Defns defns = ft1.getDefns();
-    	Object o = defns.get("Iface!TypeOK");
-    	if (!(o instanceof OpDefNode)) {
-    		throw new RuntimeException("Unexpected defn type for TypeOK!");
-    	}
-    	OpDefNode defNodeTypeOK = (OpDefNode) o;
-    	TreeNode n = defNodeTypeOK.getTreeNode();
-    	if (!(n instanceof SyntaxTreeNode)) {
-    		throw new RuntimeException("Unexpected TreeNode type for TypeOK!");
-    	}
-    	SyntaxTreeNode node = (SyntaxTreeNode) n;
-    	node.printST(1);*/
     	
     	// compute the entire state space
     	TLC tlcTypeOK = new TLC();
@@ -463,6 +449,10 @@ public class TLC {
     			nonConstValueTypes.add(varType);
     			nonConstValueVars.add(var);
     		}
+    	}
+    	if (nonConstValueVars.size() == 0) {
+    		System.out.println("no non-const values in the diff rep set, not generating separator file.");
+    		return;
     	}
     	
     	Set<String> consts = new HashSet<>();
@@ -526,6 +516,7 @@ public class TLC {
         	constraints.add(constraint);
         }
         final String constValueConstraint = "/\\ " + String.join("\n/\\ ", constraints);
+        System.out.println("Const part of the diff rep:");
         System.out.println(constValueConstraint);
     }
     
