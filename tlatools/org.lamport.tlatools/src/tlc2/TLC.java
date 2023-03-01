@@ -365,15 +365,44 @@ public class TLC {
 	 */
     public static void main(String[] args) throws Exception
     {
-    	if (args.length < 5) {
-    		System.out.println("usage: tlc-ian <spec1> <cfg1> <spec2> <cfg2> <output_loc>");
-    		System.exit(0);
+    	// TODO add functionality for compareSpecToEnvironment
+    	if (args.length == 3) {
+    		compareSpecToProperty(args);
     	}
-    	final String tla1 = args[0];
-    	final String cfg1 = args[1];
-    	final String tla2 = args[2];
-    	final String cfg2 = args[3];
-    	final String outputLoc = args[4] + "/";
+    	else if (args.length == 5) {
+    		compareSpecs(args);
+    	}
+    	else {
+    		System.out.println("usage: tlc-ian <output_loc> <spec1> <cfg1> [<spec2> <cfg2>]");
+    	}
+    	System.exit(0);
+    }
+    
+    // M_err_rep: states that are in (M_err \cap P) but MAY leave P in one step
+    private static void compareSpecToProperty(String[] args) {
+    	final String outputLoc = args[0] + "/";
+    	final String tla = args[1];
+    	final String cfg = args[2];
+    	
+    	// initialize and run TLC
+    	TLC tlc = new TLC();
+    	runTLC(tla, cfg, tlc);
+    	
+    	// compute the representation for beh(P) - \eta(spec,P)
+    	computePropertyDiffRep(tlc, outputLoc);
+    }
+    
+    private static void compareSpecToEnvironment(String[] args) {
+    	// TODO
+    	// M_err_rep: states that are in (M_err \cap E) but MAY leave E in one step
+    }
+    
+    private static void compareSpecs(String[] args) {
+    	final String outputLoc = args[0] + "/";
+    	final String tla1 = args[1];
+    	final String cfg1 = args[2];
+    	final String tla2 = args[3];
+    	final String cfg2 = args[4];
     	
     	// initialize and run TLC
     	TLC tlc1 = new TLC();
@@ -387,10 +416,15 @@ public class TLC {
     	
     	// compute the representation for \eta(spec2,P) - \eta(spec1,P)
     	computeDiffRep(tlc1, tlc2, outputLoc);
-    	
-    	System.out.println("Done");
-    	
-    	System.exit(0);
+    }
+    
+    private static void computePropertyDiffRep(final TLC tlc, final String outputLoc) {
+    	final String fileName = "safety_boundary_representation";
+    	ExtKripke kripke = tlc.getKripke();
+    	Set<TLCState> safetyBoundary = kripke.safetyBoundary();
+    	Set<String> safetyBoundaryStrs = stateSetToStringSet(safetyBoundary);
+    	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc);
+    	createDiffStateRepFormula(safetyBoundaryStrs, tlc, outputLoc);
     }
     
     private static void computeDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc) {
@@ -399,27 +433,55 @@ public class TLC {
     	ExtKripke errPost1 = tlc1.getKripke().createErrPost();
     	ExtKripke errPost2 = tlc2.getKripke().createErrPost();
     	
-    	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
-    	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
-    			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
-    			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
-    	if (diffRep.size() == 0) {
-    		System.out.println("diff rep set is empty, not generating separator file.");
-    		return;
+    	if (errPre1.isEmpty() && errPre2.isEmpty()) {
+    		System.out.println("Both specs are maximally robust.");
     	}
-    	
-    	Set<TLCState> diffStates = ExtKripke.projectFirst(diffRep);
-    	Set<String> diffStateStrs = stateSetToStringSet(diffStates); // positive examples
+    	else if (errPre1.isEmpty()) {
+    		System.out.println("Spec 1 is maximally robust (M1_err is empty).");
+    	}
+    	else if (errPre2.isEmpty()) {
+    		System.out.println("Spec 2 is maximally robust (M2_err is empty).");
+    	}
+    	else {
+        	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
+        	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
+        			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
+        			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
+        	if (diffRep.size() > 0) {
+            	// the two specs have overlapping error traces / state space so we compare them
+            	Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRep);
+            	Set<String> diffRepStateStrs = stateSetToStringSet(diffRepStates);
+            	final String diffRepStatesFileName = "diff_representation";
+            	writeDiffRepStatesToFile(diffRepStateStrs, diffRepStatesFileName, outputLoc);
+            	createDiffStateRepFormula(diffRepStateStrs, tlc1, tlc2, outputLoc);
+        	}
+        	else {
+        		System.out.println("\\eta_2 - \\eta_1 = beh(M1_err) - beh(M2_err) = {}  (the diff rep is empty)");
+        	}
+    	}
+    }
+    
+    private static void writeDiffRepStatesToFile(final Set<String> diffRepStateStrs, final String name, final String outputLoc) {
+    	StringBuilder builder = new StringBuilder();
+    	for (String diffState : diffRepStateStrs) {
+    		builder.append(diffState).append("\n");
+    	}
+    	final String file = outputLoc + name + ".txt";
+    	writeFile(file, builder.toString());
+    }
+    
+    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final TLC tlc, final String outputLoc) {
+    	// diffRepStateStrs is the set of positive examples
     	
     	// compute the entire state space
     	TLC tlcTypeOK = new TLC();
-    	runTLCExtractStateSpace(tlc1, tlc2, outputLoc, tlcTypeOK);
+    	runTLCExtractStateSpace(tlc, outputLoc, tlcTypeOK);
     	ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
     	Set<TLCState> stateSpace = stateSpaceKripke.reach();
     	Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
     	
-    	// negative examples
-    	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffStateStrs);
+    	// notDiffStateStrs is the set of negative examples
+    	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffRepStateStrs);
     	System.out.println("not diff states size: " + notDiffStateStrs.size());
     	
     	// we can automatically extract types by looking at the states in stateSpace.
@@ -432,7 +494,7 @@ public class TLC {
     	// in the diffStates, figure out which state vars may have multiple values.
     	// we will then attempt to create a formula to figure out which values we want.
     	// we abuse the word "type" in StateVarType here.
-    	Map<String, StateVarType> diffStateVarDomains = StateVarType.determineVarTypes(diffStateStrs);
+    	Map<String, StateVarType> diffStateVarDomains = StateVarType.determineVarTypes(diffRepStateStrs);
     	Set<StateVarType> nonConstValueTypes = new HashSet<>();
     	Set<String> nonConstValueVars = new HashSet<>();
     	Set<String> constValueVars = new HashSet<>();
@@ -440,7 +502,47 @@ public class TLC {
     	determineConstAndNonConstDiffStateVars(diffStateVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
     	
     	if (nonConstValueVars.size() > 0) {
-        	buildAndWriteSeparatorFOL(diffStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc);
+        	buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc);
+        	buildAndPrintConstValueConstraint(constValueVars, constValueValues);
+    	}
+    	else {
+    		System.out.println("no non-const values in the diff rep set, not generating separator file.");
+    	}
+    }
+    
+    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final TLC tlc1, final TLC tlc2, final String outputLoc) {
+    	// diffRepStateStrs is the set of positive examples
+    	
+    	// compute the entire state space
+    	TLC tlcTypeOK = new TLC();
+    	runTLCExtractStateSpace(tlc1, tlc2, outputLoc, tlcTypeOK);
+    	ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
+    	Set<TLCState> stateSpace = stateSpaceKripke.reach();
+    	Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
+    	
+    	// notDiffStateStrs is the set of negative examples
+    	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffRepStateStrs);
+    	System.out.println("not diff states size: " + notDiffStateStrs.size());
+    	
+    	// we can automatically extract types by looking at the states in stateSpace.
+    	// there is no need to examine TypeOK
+    	// TODO it would be a nice sanity check to make sure the vars in varTypes match those in tlc1 and tlc2
+    	// TODO type domains should be mutually exclusive, we need to bail if they aren't
+    	Set<StateVarType> types = StateVarType.determineTypes(stateSpaceStrs);
+    	Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpaceStrs);
+    	
+    	// in the diffStates, figure out which state vars may have multiple values.
+    	// we will then attempt to create a formula to figure out which values we want.
+    	// we abuse the word "type" in StateVarType here.
+    	Map<String, StateVarType> diffStateVarDomains = StateVarType.determineVarTypes(diffRepStateStrs);
+    	Set<StateVarType> nonConstValueTypes = new HashSet<>();
+    	Set<String> nonConstValueVars = new HashSet<>();
+    	Set<String> constValueVars = new HashSet<>();
+    	Map<String, String> constValueValues = new HashMap<>();
+    	determineConstAndNonConstDiffStateVars(diffStateVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
+    	
+    	if (nonConstValueVars.size() > 0) {
+        	buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc);
         	buildAndPrintConstValueConstraint(constValueVars, constValueValues);
     	}
     	else {
@@ -697,6 +799,23 @@ public class TLC {
         writeFile(name, builder.toString());
     }
     
+    private static void runTLCExtractStateSpace(final TLC tlc, final String outputLoc, TLC tlcTypeOK) {
+    	final String typeOKInv = "TypeOK";
+    	final boolean hasTypeOK = hasInvariant(tlc, typeOKInv);
+    	if (!hasTypeOK) {
+        	System.out.println("The spec doesn't have a  TypeOK");
+    		return;
+    	}
+    	
+    	System.out.println("The spec has a TypeOK");
+
+        final String specName = "JustTypeOK";
+        final String tlaFile = stateSpaceTLA(specName, tlc, outputLoc);
+        final String cfgFile = stateSpaceConfig(specName, outputLoc);
+
+    	runTLC(tlaFile, cfgFile, tlcTypeOK);
+    }
+    
     private static void runTLCExtractStateSpace(final TLC tlc1, final TLC tlc2, final String outputLoc, TLC tlcTypeOK) {
     	final String typeOKInv = "TypeOK";
     	final boolean bothHaveTypeOK = hasInvariant(tlc1, typeOKInv) && hasInvariant(tlc2, typeOKInv);
@@ -712,6 +831,34 @@ public class TLC {
         final String cfgFile = stateSpaceConfig(specName, outputLoc);
 
     	runTLC(tlaFile, cfgFile, tlcTypeOK);
+    }
+    
+    private static String stateSpaceTLA(final String specName, final TLC tlc, final String outputLoc) {
+        final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
+        final String endModule = "=============================================================================";
+        
+        FastTool ft = (FastTool) tlc.tool;
+        ArrayList<String> varNameList = toArrayList(ft.getVarNames());
+        
+        final String varList = String.join(", ", varNameList);
+        final String varsDecl = "VARIABLES " + varList;
+        
+        final String specDef = "S1 == INSTANCE " + tlc.getSpecName() + " WITH " + instanceWithList(varNameList);
+        final String typeOKDef = "TypeOK == S1!TypeOK";
+        
+        StringBuilder builder = new StringBuilder();
+        builder.append(specDecl).append("\n");
+        builder.append(varsDecl).append("\n");
+        builder.append("\n");
+        builder.append(specDef).append("\n");
+        builder.append(typeOKDef).append("\n");
+        builder.append(endModule).append("\n");
+        builder.append("\n");
+        
+        final String file = outputLoc + specName + ".tla";
+        writeFile(file, builder.toString());
+        
+        return file;
     }
     
     private static String stateSpaceTLA(final String specName, final TLC tlc1, final TLC tlc2, final String outputLoc) {

@@ -19,7 +19,7 @@ fi
 
 # generate err pre and err post comparison files
 mkdir -p "${output}"
-java -jar "${tlcian_jar}" "${module1}.tla" "${module1}.cfg" "${module2}.tla" "${module2}.cfg" "${output}"
+java -jar "${tlcian_jar}" "${output}" "${module1}.tla" "${module1}.cfg" "${module2}.tla" "${module2}.cfg"
 rm -rf states/
 rm -f "${module}_TTrace"*
 

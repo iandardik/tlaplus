@@ -73,7 +73,7 @@ public class ExtKripke {
     
     public ExtKripke createErrPost() {
     	ExtKripke errPost = new ExtKripke();
-    	errPost.initStates = errorInterface();
+    	errPost.initStates = errorBoundary();
     	errPost.allStates = this.allStates;
     	errPost.delta = this.delta;
     	errPost.deltaActions = this.deltaActions;
@@ -122,13 +122,12 @@ public class ExtKripke {
     	return elem;
     }
     
-    private Set<TLCState> errorInterface() {
-    	Set<TLCState> explored = new HashSet<TLCState>();
-    	explored.addAll(this.initStates);
-    	Set<TLCState> startStates = setMinus(this.initStates, this.badStates);
-    	Set<TLCState> ei = intersection(this.initStates, this.badStates);
-    	calculateErrorInterface(explored, startStates, ei);
-    	return ei;
+    public Set<TLCState> safetyBoundary() {
+    	return calculateBoundary(BoundaryType.safety);
+    }
+    
+    private Set<TLCState> errorBoundary() {
+    	return calculateBoundary(BoundaryType.error);
     }
     
     private Set<TLCState> succ(TLCState s) {
@@ -142,14 +141,29 @@ public class ExtKripke {
     }
     
     // invariant: all states in frontier are safe (not in this.badStates)
-    private void calculateErrorInterface(final Set<TLCState> explored, final Set<TLCState> frontier, Set<TLCState> ei) {
+    private Set<TLCState> calculateBoundary(BoundaryType boundaryType) {
+    	Set<TLCState> goodInitStates = setMinus(this.initStates, this.badStates);
+    	Set<TLCState> explored = new HashSet<>(goodInitStates);
+    	Set<TLCState> frontier = new HashSet<>(goodInitStates);
+    	Set<TLCState> boundary = (boundaryType.equals(BoundaryType.safety)) ?
+    			new HashSet<>() : intersection(this.initStates, this.badStates);
+    	
     	while (!frontier.isEmpty()) {
     		Set<TLCState> addToFrontier = new HashSet<TLCState>();
 	    	for (TLCState s : frontier) {
 	    		explored.add(s);
 	    		for (TLCState t : this.succ(s)) {
 	    			if (this.badStates.contains(t)) {
-	    				ei.add(t);
+	    				// the state which we add to the boundary depends on whether we're calculating:
+	    				// the safety boundary or (else) the error boundary
+	    				switch (boundaryType) {
+	    				case safety:
+	    					boundary.add(s);
+	    					break;
+	    				case error:
+	    					boundary.add(t);
+	    					break;
+	    				}
 	    			}
 	    			else if (!explored.contains(t)) {
 	    				addToFrontier.add(t);
@@ -159,12 +173,13 @@ public class ExtKripke {
 	    	frontier.addAll(addToFrontier);
 	    	frontier.removeAll(explored);
     	}
+    	return boundary;
     }
     
     private Set<TLCState> notAlwaysNotPhiStates() {
     	Set<TLCState> states = new HashSet<TLCState>();
     	Set<Pair<TLCState,TLCState>> inverseDelta = invertTransitionRelation(delta);
-    	for (TLCState errState : this.errorInterface()) {
+    	for (TLCState errState : this.errorBoundary()) {
     		// perform a DFS (on inverse delta) from errState. add every state we find to "states"
     		// discoverDFS will mutate "states"
     		discoverDFS(errState, inverseDelta, states);
@@ -221,15 +236,14 @@ public class ExtKripke {
     	final Set<TLCState> mutualReach = mutualReach(m1, m2);
     	final Set<Pair<TLCState,TLCState>> m1MinusM2Delta = setMinus(m1.delta, m2.delta);
     	final Set<Pair<TLCState,Action>> rep = new HashSet<Pair<TLCState,Action>>();
-    	for (TLCState s : mutualReach) {
-    		for (Pair<TLCState,TLCState> t1 : m1MinusM2Delta) {
-    			if (s.equals(t1.first)) {
-					// found an outgoing transition (of ONLY m1) from s
-					final Action act = m1.deltaActions.get(t1);
-					rep.add(new Pair<TLCState,Action>(s, act));
-    			}
-    		}
-    	}
+		for (Pair<TLCState,TLCState> t1 : m1MinusM2Delta) {
+			TLCState s = t1.first;
+			if (mutualReach.contains(s)) {
+				// found an outgoing transition (of ONLY m1) from s
+				final Action act = m1.deltaActions.get(t1);
+				rep.add(new Pair<TLCState,Action>(s, act));
+			}
+		}
     	return rep;
     }
     
@@ -238,18 +252,18 @@ public class ExtKripke {
     	Set<TLCState> mutualInit = intersection(m1.initStates, m2.initStates);
     	Set<Pair<TLCState,TLCState>> mutualDelta = intersection(m1.delta, m2.delta);
     	for (TLCState init : mutualInit) {
-        	mutualReach(m1, m2, mutualDelta, init, reach);
+        	mutualReach(mutualDelta, init, reach);
     	}
     	return reach;
     }
     
-    private static void mutualReach(final ExtKripke m1, final ExtKripke m2, final Set<Pair<TLCState,TLCState>> mutualDelta, final TLCState init, Set<TLCState> reach) {
+    private static void mutualReach(final Set<Pair<TLCState,TLCState>> mutualDelta, final TLCState init, Set<TLCState> reach) {
     	reach.add(init);
     	for (Pair<TLCState,TLCState> t : mutualDelta) {
     		if (init.equals(t.first)) {
     			TLCState succ = t.second;
     			if (!reach.contains(succ)) {
-    				mutualReach(m1, m2, mutualDelta, succ, reach);
+    				mutualReach(mutualDelta, succ, reach);
     			}
     		}
     	}
@@ -503,4 +517,8 @@ public class ExtKripke {
 		}
 		return sNew.toString();
 	}
+    
+    private enum BoundaryType {
+    	safety, error
+    }
 }
