@@ -53,6 +53,10 @@ public class ExtKripke {
     public boolean isEmpty() {
     	return this.allStates.isEmpty() || this.initStates.isEmpty();
     }
+
+    public boolean isSafe() {
+    	return this.badStates.isEmpty();
+    }
     
     public Set<TLCState> reach() {
     	return this.allStates;

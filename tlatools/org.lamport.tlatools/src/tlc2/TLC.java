@@ -377,6 +377,7 @@ public class TLC {
 	
 	private static final String EMPTY_SPEC_SUFFIX = "_spec_is_empty";
 	private static final String DIFF_REP_STATES_EMPTY = "diff_rep_states_empty";
+	private static final String IS_SAFE_SUFFIX = "_is_safe";
 	private static final String TRUE = "true";
 	private static final String FALSE = "false";
 	
@@ -433,6 +434,7 @@ public class TLC {
     	final String cfg1 = args[2];
     	final String tla2 = args[3];
     	final String cfg2 = args[4];
+    	assert(!tla1.equals(tla2));
     	
     	// initialize and run TLC
     	TLC tlc1 = new TLC();
@@ -443,6 +445,8 @@ public class TLC {
     	jsonOutput.put(COMPARISON_TYPE, SPEC_TO_SPEC);
     	jsonOutput.put(SPEC1_NAME, tlc1.getSpecName());
     	jsonOutput.put(SPEC2_NAME, tlc2.getSpecName());
+    	jsonOutput.put(tlc1.getSpecName() + IS_SAFE_SUFFIX, tlc1.getKripke().isSafe() ? TRUE : FALSE);
+    	jsonOutput.put(tlc2.getSpecName() + IS_SAFE_SUFFIX, tlc2.getKripke().isSafe() ? TRUE : FALSE);
     	
     	// create err pre TLA+ spec
     	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonOutput);
@@ -461,6 +465,7 @@ public class TLC {
     	Set<String> safetyBoundaryStrs = stateSetToStringSet(safetyBoundary);
     	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc);
     	createDiffStateRepFormula(safetyBoundaryStrs, tlaFile, tlc, outputLoc, jsonOutput);
+    	jsonOutput.put(tlc.getSpecName() + IS_SAFE_SUFFIX, kripke.isSafe() ? TRUE : FALSE);
     }
     
     private static void computeDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc, Map<String,String> jsonOutput) {

@@ -12,6 +12,19 @@ tlcian_jar="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/bin/tlc-ian.
 sep_source_path="/Users/idardik/Documents/CMU/folseparators"
 
 
+def const_constraint(jsonResult):
+    if 'const_value_constraint' in jsonResult:
+        return jsonResult['const_value_constraint']
+    else:
+        return None
+
+def non_const_constraint(jsonResult, outdir):
+    if 'separator_file_name' in jsonResult:
+        sep_file = jsonResult['separator_file_name']
+        return run_fol_separator(outdir, sep_file)
+    else:
+        return None
+
 def run_fol_separator(outdir, sep_file):
     orig_dir = os.getcwd()
     os.chdir(sep_source_path)
@@ -36,15 +49,20 @@ def robustness(spec_name, spec, cfg, outdir):
     assert jsonResult['comparison_type'] == 'spec_to_property'
     assert jsonResult['spec_name'] == spec_name
 
-    diff_rep_file = jsonResult['diff_rep_file_name']
-    sep_file = jsonResult['separator_file_name']
-    const_value_constraint = jsonResult['const_value_constraint']
-    non_const_value_constraint = run_fol_separator(outdir, sep_file)
+    spec_is_safe = jsonResult[spec_name + "_is_safe"]
+    if spec_is_safe == "true":
+        print("Spec is robust against ANY behavior or environment")
+    else:
+        diff_rep_file = jsonResult['diff_rep_file_name']
+        const_constr = const_constraint(jsonResult)
+        non_const_constr = non_const_constraint(jsonResult, outdir)
 
-    print("TLA+ Module: " + spec_name)
-    print("Error boundary representation: " + outdir + "/" + diff_rep_file)
-    print("const vc: " + const_value_constraint)
-    print("non const vc: " + non_const_value_constraint)
+        print("TLA+ Module: " + spec_name)
+        print("Error boundary representation: " + outdir + "/" + diff_rep_file + ".txt")
+        if const_constr is not None:
+            print("const constraint: " + const_constr)
+        if non_const_constr is not None:
+            print("non const constraint: " + non_const_constr)
 
 
 def get_cfg(spec_name, cfg):
