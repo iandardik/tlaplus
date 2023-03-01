@@ -976,6 +976,7 @@ public class TLC {
         final String modulesDecl = "EXTENDS " + moduleList;
         final String varsDecl = "VARIABLES " + varList;
         final String varsSeq = varsSeqName + " == <<" + varList + ">>";
+        final String specFairness = fairnessConditionString(tla, tlc);
 
         StringBuilder builder = new StringBuilder();
         builder.append(specDecl).append("\n");
@@ -985,7 +986,7 @@ public class TLC {
         builder.append("\n");
         builder.append(varsSeq).append("\n");
         builder.append("\n");
-        builder.append(kripke.toPartialTLASpec(varsSeqName, strongFairness)).append("\n");
+        builder.append(kripke.toPartialTLASpec(varsSeqName, specFairness, strongFairness)).append("\n");
         builder.append(endModule).append("\n");
         builder.append("\n");
 
@@ -994,6 +995,16 @@ public class TLC {
         writeFile(file, builder.toString());
         
         return specName;
+    }
+    
+    private static String fairnessConditionString(final String tla, final TLC tlc) {
+        Action[] fairnessConditions = tlc.tool.getTemporals();
+        List<String> fairnessConditionStrs = new ArrayList<>();
+        for (Action condition : fairnessConditions) {
+        	final String condStr = extractSyntaxFromSource(tla, condition.getLocation());
+        	fairnessConditionStrs.add(condStr);
+        }
+        return String.join(" /\\ ", fairnessConditionStrs);
     }
     
     private static void runTLC(final String tla, final String cfg, TLC tlc) {
@@ -1130,6 +1141,60 @@ public class TLC {
     private static void printStringArr(ArrayList<String> arr) {
     	for (String s : arr) {
     		System.out.println(s);
+    	}
+    }
+    
+    private static String extractSyntaxFromSource(final String tla, final String loc) {
+    	String[] parts = loc.replaceAll(",", "").split(" ");
+    	int startLine = -1;
+    	int startCol = -1;
+    	int endLine = -1;
+    	int endCol = -1;
+    	for (int i = 0; i < parts.length-1; ++i) {
+    		final String part = parts[i];
+			final String strLineOrColNum = parts[i+1];
+    		if (part.equals("line") && startLine < 0) {
+    			startLine = Integer.parseInt(strLineOrColNum) - 1;
+    		}
+    		else if (part.equals("line") && startLine >= 0) {
+    			endLine = Integer.parseInt(strLineOrColNum) - 1;
+    		}
+    		else if (part.equals("col") && startCol < 0) {
+    			startCol = Integer.parseInt(strLineOrColNum) - 1;
+    		}
+    		else if (part.equals("col") && startCol >= 0) {
+    			endCol = Integer.parseInt(strLineOrColNum);
+    		}
+    	}
+    	assert(startLine >= 0);
+    	assert(startCol >= 0);
+    	assert(endLine >= 0);
+    	assert(endCol >= 0);
+    	assert(startLine <= endLine);
+
+    	ArrayList<String> tlaSource = fileContents(tla);
+    	// single line extraction
+    	if (startLine == endLine) {
+    		final String line = tlaSource.get(startLine);
+    		final String syntax = line.substring(startCol, endCol);
+    		return syntax;
+    	}
+    	// multi-line extraction
+    	else {
+        	StringBuilder builder = new StringBuilder();
+        	for (int i = startLine; i <= endLine; ++i) {
+        		final String line = tlaSource.get(i);
+        		if (i == startLine) {
+        			builder.append(line.substring(startCol));
+        		}
+        		else if (i == endLine) {
+        			builder.append(" ").append(line.substring(0, endCol));
+        		}
+        		else {
+        			builder.append(" ").append(line);
+        		}
+        	}
+        	return builder.toString();
     	}
     }
     

@@ -282,7 +282,7 @@ public class ExtKripke {
     // print a TLA+ spec
     
     // TODO if the spec has fairness requirements we need to add them in
-    public String toPartialTLASpec(String varsSeqName, boolean strongFairness) {
+    public String toPartialTLASpec(String varsSeqName, String specFairness, boolean strongFairness) {
     	StringBuilder builder = new StringBuilder();
     	
     	//String initOp = "Init_" + tag;
@@ -304,6 +304,9 @@ public class ExtKripke {
     	builder.append(specOp).append(" == ")
     		.append(initOp).append(" /\\ [][")
     		.append(nextOp).append("]_").append(varsSeqName);
+    	if (!specFairness.isEmpty() && !strongFairness) {
+    		builder.append(" /\\ ").append(specFairness);
+    	}
     	if (strongFairness) {
     		builder.append(" /\\ SF_").append(varsSeqName).append("(").append(nextOp).append(")");
     	}
