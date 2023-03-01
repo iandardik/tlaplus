@@ -41,12 +41,14 @@ pushd "${output}"
 
 echo "running error pre"
 java -jar "${tlc_jar}" -deadlock -cleanup -config Combined_ErrPre.cfg Combined_ErrPre.tla
+echo "ret code: $?"
 rm -rf states/
 rm -f "${module}_TTrace"*
 
 echo ""
 echo "running error post"
 java -jar "${tlc_jar}" -deadlock -cleanup -config Combined_ErrPost.cfg Combined_ErrPost.tla
+echo "ret code: $?"
 rm -rf states/
 rm -f "${module}_TTrace"*
 

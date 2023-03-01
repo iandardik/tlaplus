@@ -360,26 +360,53 @@ public class TLC {
      *   
      */
 	
+	private static final String COMPARISON_TYPE = "comparison_type";
+	private static final String SPEC_TO_PROPERTY = "spec_to_property";
+	private static final String SPEC_TO_SPEC = "spec_to_spec";
+	
+	private static final String DIFF_REP_FILE_NAME = "diff_rep_file_name";
+	private static final String CONST_VALUE_CONSTRAINT = "const_value_constraint";
+	private static final String SEPARATOR_FILE_NAME = "separator_file_name";
+	private static final String SPEC_NAME = "spec_name";
+	private static final String SPEC1_NAME = "spec1_name";
+	private static final String SPEC2_NAME = "spec2_name";
+	private static final String SPEC1_ERR_PRE_NAME = "spec1_err_pre_name";
+	private static final String SPEC2_ERR_PRE_NAME = "spec2_err_pre_name";
+	private static final String SPEC1_ERR_POST_NAME = "spec1_err_post_name";
+	private static final String SPEC2_ERR_POST_NAME = "spec2_err_post_name";
+	
+	private static final String EMPTY_SPEC_SUFFIX = "_spec_is_empty";
+	private static final String DIFF_REP_STATES_EMPTY = "diff_rep_states_empty";
+	private static final String TRUE = "true";
+	private static final String FALSE = "false";
+	
+	private static final String DIFF_REP_STATE_FORMULA_ERROR = "diff_rep_state_formula_error";
+	private static final String MISSING_TYPEOK = "missing_typeok";
+	private static final String MISSING_BOTH_TYPEOKS = "missing_both_typeoks";
+	
+	
 	/*
 	 * We compute whether \eta(spec1,P) \subseteq \eta(spec2,P)
 	 */
     public static void main(String[] args) throws Exception
     {
     	// TODO add functionality for compareSpecToEnvironment
+    	Map<String,String> jsonOutput = new HashMap<>();
     	if (args.length == 3) {
-    		compareSpecToProperty(args);
+    		compareSpecToProperty(args, jsonOutput);
     	}
     	else if (args.length == 5) {
-    		compareSpecs(args);
+    		compareSpecs(args, jsonOutput);
     	}
     	else {
     		System.out.println("usage: tlc-ian <output_loc> <spec1> <cfg1> [<spec2> <cfg2>]");
     	}
+    	System.out.println(asJson(jsonOutput));
     	System.exit(0);
     }
     
     // M_err_rep: states that are in (M_err \cap P) but MAY leave P in one step
-    private static void compareSpecToProperty(String[] args) {
+    private static void compareSpecToProperty(String[] args, Map<String,String> jsonOutput) {
     	final String outputLoc = args[0] + "/";
     	final String tla = args[1];
     	final String cfg = args[2];
@@ -387,17 +414,20 @@ public class TLC {
     	// initialize and run TLC
     	TLC tlc = new TLC();
     	runTLC(tla, cfg, tlc);
+
+    	jsonOutput.put(COMPARISON_TYPE, SPEC_TO_PROPERTY);
+    	jsonOutput.put(SPEC_NAME, tlc.getSpecName());
     	
     	// compute the representation for beh(P) - \eta(spec,P)
-    	computePropertyDiffRep(tlc, outputLoc);
+    	computePropertyDiffRep(tla, tlc, outputLoc, jsonOutput);
     }
     
-    private static void compareSpecToEnvironment(String[] args) {
+    private static void compareSpecToEnvironment(String[] args, Map<String,String> jsonOutput) {
     	// TODO
     	// M_err_rep: states that are in (M_err \cap E) but MAY leave E in one step
     }
     
-    private static void compareSpecs(String[] args) {
+    private static void compareSpecs(String[] args, Map<String,String> jsonOutput) {
     	final String outputLoc = args[0] + "/";
     	final String tla1 = args[1];
     	final String cfg1 = args[2];
@@ -409,25 +439,31 @@ public class TLC {
     	TLC tlc2 = new TLC();
     	runTLC(tla1, cfg1, tlc1);
     	runTLC(tla2, cfg2, tlc2);
+
+    	jsonOutput.put(COMPARISON_TYPE, SPEC_TO_SPEC);
+    	jsonOutput.put(SPEC1_NAME, tlc1.getSpecName());
+    	jsonOutput.put(SPEC2_NAME, tlc2.getSpecName());
     	
     	// create err pre TLA+ spec
-    	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc);
-    	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc);
+    	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonOutput);
+    	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonOutput);
     	
     	// compute the representation for \eta(spec2,P) - \eta(spec1,P)
-    	computeDiffRep(tlc1, tlc2, outputLoc);
+    	computeDiffRep(tlc1, tlc2, outputLoc, jsonOutput);
     }
     
-    private static void computePropertyDiffRep(final TLC tlc, final String outputLoc) {
+    private static void computePropertyDiffRep(final String tlaFile, final TLC tlc, final String outputLoc, Map<String,String> jsonOutput) {
     	final String fileName = "safety_boundary_representation";
+    	jsonOutput.put(DIFF_REP_FILE_NAME, fileName);
+    	
     	ExtKripke kripke = tlc.getKripke();
     	Set<TLCState> safetyBoundary = kripke.safetyBoundary();
     	Set<String> safetyBoundaryStrs = stateSetToStringSet(safetyBoundary);
     	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc);
-    	createDiffStateRepFormula(safetyBoundaryStrs, tlc, outputLoc);
+    	createDiffStateRepFormula(safetyBoundaryStrs, tlaFile, tlc, outputLoc, jsonOutput);
     }
     
-    private static void computeDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc) {
+    private static void computeDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc, Map<String,String> jsonOutput) {
     	ExtKripke errPre1 = tlc1.getKripke().createErrPre();
     	ExtKripke errPre2 = tlc2.getKripke().createErrPre();
     	ExtKripke errPost1 = tlc1.getKripke().createErrPost();
@@ -449,14 +485,16 @@ public class TLC {
         			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
         	if (diffRep.size() > 0) {
             	// the two specs have overlapping error traces / state space so we compare them
+        		jsonOutput.put(DIFF_REP_STATES_EMPTY, FALSE);
             	Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRep);
             	Set<String> diffRepStateStrs = stateSetToStringSet(diffRepStates);
             	final String diffRepStatesFileName = "diff_representation";
             	writeDiffRepStatesToFile(diffRepStateStrs, diffRepStatesFileName, outputLoc);
-            	createDiffStateRepFormula(diffRepStateStrs, tlc1, tlc2, outputLoc);
+            	createDiffStateRepFormula(diffRepStateStrs, tlc1, tlc2, outputLoc, jsonOutput);
         	}
         	else {
-        		System.out.println("\\eta_2 - \\eta_1 = beh(M1_err) - beh(M2_err) = {}  (the diff rep is empty)");
+        		jsonOutput.put(DIFF_REP_STATES_EMPTY, TRUE);
+        		//System.out.println("\\eta_2 - \\eta_1 = beh(M1_err) - beh(M2_err) = {}  (the diff rep is empty)");
         	}
     	}
     }
@@ -470,19 +508,28 @@ public class TLC {
     	writeFile(file, builder.toString());
     }
     
-    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final TLC tlc, final String outputLoc) {
+    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final String tlaFile, final TLC tlc, final String outputLoc,
+    		Map<String,String> jsonOutput) {
+    	// a TypeOK is required to gather the info we need to create a sep.fol file
+    	final String typeOKInv = "TypeOK";
+    	final boolean hasTypeOK = hasInvariant(tlc, typeOKInv);
+    	if (!hasTypeOK) {
+        	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);
+    		return;
+    	}
+    	
     	// diffRepStateStrs is the set of positive examples
     	
     	// compute the entire state space
     	TLC tlcTypeOK = new TLC();
-    	runTLCExtractStateSpace(tlc, outputLoc, tlcTypeOK);
+    	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
     	ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
     	Set<TLCState> stateSpace = stateSpaceKripke.reach();
     	Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
     	
     	// notDiffStateStrs is the set of negative examples
     	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffRepStateStrs);
-    	System.out.println("not diff states size: " + notDiffStateStrs.size());
+    	//System.out.println("not diff states size: " + notDiffStateStrs.size());
     	
     	// we can automatically extract types by looking at the states in stateSpace.
     	// there is no need to examine TypeOK
@@ -501,16 +548,24 @@ public class TLC {
     	Map<String, String> constValueValues = new HashMap<>();
     	determineConstAndNonConstDiffStateVars(diffStateVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
     	
-    	if (nonConstValueVars.size() > 0) {
-        	buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc);
-        	buildAndPrintConstValueConstraint(constValueVars, constValueValues);
+    	if (constValueVars.size() > 0) {
+        	buildAndPrintConstValueConstraint(constValueVars, constValueValues, jsonOutput);
     	}
-    	else {
-    		System.out.println("no non-const values in the diff rep set, not generating separator file.");
+    	if (nonConstValueVars.size() > 0) {
+        	buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc, jsonOutput);
     	}
     }
     
-    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final TLC tlc1, final TLC tlc2, final String outputLoc) {
+    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final TLC tlc1, final TLC tlc2,
+    		final String outputLoc, Map<String,String> jsonOutput) {
+    	// a TypeOK is required to gather the info we need to create a sep.fol file
+    	final String typeOKInv = "TypeOK";
+    	final boolean bothHaveTypeOK = hasInvariant(tlc1, typeOKInv) && hasInvariant(tlc2, typeOKInv);
+    	if (!bothHaveTypeOK) {
+        	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_BOTH_TYPEOKS);
+    		return;
+    	}
+
     	// diffRepStateStrs is the set of positive examples
     	
     	// compute the entire state space
@@ -522,7 +577,7 @@ public class TLC {
     	
     	// notDiffStateStrs is the set of negative examples
     	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffRepStateStrs);
-    	System.out.println("not diff states size: " + notDiffStateStrs.size());
+    	//System.out.println("not diff states size: " + notDiffStateStrs.size());
     	
     	// we can automatically extract types by looking at the states in stateSpace.
     	// there is no need to examine TypeOK
@@ -541,17 +596,16 @@ public class TLC {
     	Map<String, String> constValueValues = new HashMap<>();
     	determineConstAndNonConstDiffStateVars(diffStateVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
     	
-    	if (nonConstValueVars.size() > 0) {
-        	buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc);
-        	buildAndPrintConstValueConstraint(constValueVars, constValueValues);
+    	if (constValueVars.size() > 0) {
+        	buildAndPrintConstValueConstraint(constValueVars, constValueValues, jsonOutput);
     	}
-    	else {
-    		System.out.println("no non-const values in the diff rep set, not generating separator file.");
+    	if (nonConstValueVars.size() > 0) {
+        	buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, outputLoc, jsonOutput);
     	}
     }
     
     private static void buildAndWriteSeparatorFOL(final Set<String> diffStateStrs, final Map<String, StateVarType> varTypes, final Set<String> notDiffStateStrs,
-    		final Set<StateVarType> nonConstValueTypes, final Set<String> nonConstValueVars, final String outputLoc) {
+    		final Set<StateVarType> nonConstValueTypes, final Set<String> nonConstValueVars, final String outputLoc, Map<String,String> jsonOutput) {
     	Set<String> consts = new HashSet<>();
     	Set<String> modelElements = new HashSet<>();
     	Set<String> modelElementDefs = new HashSet<>();
@@ -601,21 +655,21 @@ public class TLC {
     		}
     	}
     	
-    	final String separatorFile = "sep";
-    	final String file = outputLoc + separatorFile + ".fol";
+    	final String separatorFile = "sep.fol";
+    	final String file = outputLoc + separatorFile;
         writeFile(file, builder.toString());
+        jsonOutput.put(SEPARATOR_FILE_NAME, separatorFile);
     }
 
-    private static void buildAndPrintConstValueConstraint(final Set<String> constValueVars, final Map<String, String> constValueValues) {
+    private static void buildAndPrintConstValueConstraint(final Set<String> constValueVars, final Map<String, String> constValueValues, Map<String,String> jsonOutput) {
         Set<String> constraints = new HashSet<>();
         for (String var : constValueVars) {
         	final String val = constValueValues.get(var);
         	final String constraint = var + " = " + val;
         	constraints.add(constraint);
         }
-        final String constValueConstraint = "/\\ " + String.join("\n/\\ ", constraints);
-        System.out.println("const part of the diff rep:");
-        System.out.println(constValueConstraint);
+        final String constValueConstraint = String.join(", ", constraints);
+        jsonOutput.put(CONST_VALUE_CONSTRAINT, constValueConstraint);
     }
     
     private static void determineConstAndNonConstDiffStateVars(final Map<String, StateVarType> diffStateVarDomains, final Map<String, StateVarType> varTypes,
@@ -705,51 +759,63 @@ public class TLC {
 		return String.join(" /\\ ", conjuncts);
 	}
 	
-    private static void createErrPre(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2, final String outputLoc) {
+    private static void createErrPre(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2,
+    		final String outputLoc, Map<String,String> jsonOutput) {
     	// collect state variables from each spec
     	Set<String> vars1 = new HashSet<String>();
     	Set<String> vars2 = new HashSet<String>();
     	
     	// create one err pre file for each spec, then combine them into a single one for comparison
     	final String tag = "ErrPre";
-    	final String specName1 = createErrPre(tag, tlc1, tla1, cfg1, vars1, outputLoc);
-    	final String specName2 = createErrPre(tag, tlc2, tla2, cfg2, vars2, outputLoc);
+    	final String specName1 = createErrPre(tag, tlc1, tla1, cfg1, vars1, outputLoc, jsonOutput);
+    	final String specName2 = createErrPre(tag, tlc2, tla2, cfg2, vars2, outputLoc, jsonOutput);
+    	
+    	jsonOutput.put(SPEC1_ERR_PRE_NAME, specName1);
+    	jsonOutput.put(SPEC2_ERR_PRE_NAME, specName2);
+    	
     	combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
     	combineConfig(tag, outputLoc);
     }
     
-    private static String createErrPre(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
+    private static String createErrPre(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars,
+    		final String outputLoc, Map<String,String> jsonOutput) {
     	ExtKripke kripke = tlc.getKripke();
     	ExtKripke errPreKripke = kripke.createErrPre();
     	final boolean strongFairness = true; // need SF in err pre
     	final String specName = kripkeToTLA(tag, tlc, errPreKripke, tla, cfg, outputLoc, strongFairness, vars);
-    	if (errPreKripke.isEmpty()) {
-    		System.out.println(specName + " for " + tla + " is empty");
-    	}
+
+    	final String specEmpty = errPreKripke.isEmpty() ? TRUE : FALSE;
+    	jsonOutput.put(specName + EMPTY_SPEC_SUFFIX, specEmpty);
     	return specName;
     }
     
-    private static void createErrPost(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2, final String outputLoc) {
+    private static void createErrPost(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2,
+    		final String outputLoc, Map<String,String> jsonOutput) {
     	// collect state variables from each spec
     	Set<String> vars1 = new HashSet<String>();
     	Set<String> vars2 = new HashSet<String>();
     	
     	// create one err pre file for each spec, then combine them into a single one for comparison
     	final String tag = "ErrPost";
-    	final String specName1 = createErrPost(tag, tlc1, tla1, cfg1, vars1, outputLoc);
-    	final String specName2 = createErrPost(tag, tlc2, tla2, cfg2, vars2, outputLoc);
+    	final String specName1 = createErrPost(tag, tlc1, tla1, cfg1, vars1, outputLoc, jsonOutput);
+    	final String specName2 = createErrPost(tag, tlc2, tla2, cfg2, vars2, outputLoc, jsonOutput);
+    	
+    	jsonOutput.put(SPEC1_ERR_POST_NAME, specName1);
+    	jsonOutput.put(SPEC2_ERR_POST_NAME, specName2);
+    	
     	combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
     	combineConfig(tag, outputLoc);
     }
     
-    private static String createErrPost(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars, final String outputLoc) {
+    private static String createErrPost(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars,
+    		final String outputLoc, Map<String,String> jsonOutput) {
     	ExtKripke kripke = tlc.getKripke();
     	ExtKripke errPostKripke = kripke.createErrPost();
     	final boolean strongFairness = false; // do not add SF to err post
     	final String specName = kripkeToTLA(tag, tlc, errPostKripke, tla, cfg, outputLoc, strongFairness, vars);
-    	if (errPostKripke.isEmpty()) {
-    		System.out.println(specName + " for " + tla + " is empty");
-    	}
+
+    	final String specEmpty = errPostKripke.isEmpty() ? TRUE : FALSE;
+    	jsonOutput.put(specName + EMPTY_SPEC_SUFFIX, specEmpty);
     	return specName;
     }
     
@@ -799,37 +865,18 @@ public class TLC {
         writeFile(name, builder.toString());
     }
     
-    private static void runTLCExtractStateSpace(final TLC tlc, final String outputLoc, TLC tlcTypeOK) {
-    	final String typeOKInv = "TypeOK";
-    	final boolean hasTypeOK = hasInvariant(tlc, typeOKInv);
-    	if (!hasTypeOK) {
-        	System.out.println("The spec doesn't have a  TypeOK");
-    		return;
-    	}
-    	
-    	System.out.println("The spec has a TypeOK");
-
-        final String specName = "JustTypeOK";
-        final String tlaFile = stateSpaceTLA(specName, tlc, outputLoc);
-        final String cfgFile = stateSpaceConfig(specName, outputLoc);
-
+    private static void runTLCExtractStateSpace(final String tlaFile, final TLC tlc, final String outputLoc, TLC tlcTypeOK) {
+    	// no need to create a new TLA file since we've already checked (in the caller to this function)
+    	// that there is a TypeOK in tlaFile
+        final String cfgName = "JustTypeOK";
+        final String cfgFile = stateSpaceConfig(cfgName, outputLoc);
     	runTLC(tlaFile, cfgFile, tlcTypeOK);
     }
     
     private static void runTLCExtractStateSpace(final TLC tlc1, final TLC tlc2, final String outputLoc, TLC tlcTypeOK) {
-    	final String typeOKInv = "TypeOK";
-    	final boolean bothHaveTypeOK = hasInvariant(tlc1, typeOKInv) && hasInvariant(tlc2, typeOKInv);
-    	if (!bothHaveTypeOK) {
-        	System.out.println("At least one spec doesn't have a  TypeOK");
-    		return;
-    	}
-    	
-    	System.out.println("Both specs have a TypeOK");
-
         final String specName = "CombinedTypeOK";
         final String tlaFile = stateSpaceTLA(specName, tlc1, tlc2, outputLoc);
         final String cfgFile = stateSpaceConfig(specName, outputLoc);
-
     	runTLC(tlaFile, cfgFile, tlcTypeOK);
     }
     
@@ -941,9 +988,10 @@ public class TLC {
         builder.append(kripke.toPartialTLASpec(varsSeqName, strongFairness)).append("\n");
         builder.append(endModule).append("\n");
         builder.append("\n");
-        
-        final String name = outputLoc + specName + ".tla";
-        writeFile(name, builder.toString());
+
+        final String fileName = specName + ".tla";
+        final String file = outputLoc + fileName;
+        writeFile(file, builder.toString());
         
         return specName;
     }
@@ -1110,6 +1158,26 @@ public class TLC {
 	    }
     	return lines;
     }
+
+	private static final String QUOTE = "\"";
+	private static final String COLON = ":";
+	
+    private static String asJson(Map<String,String> output) {
+    	List<String> fields = new ArrayList<>();
+    	for (String key : output.keySet()) {
+    		String value = output.get(key);
+        	StringBuilder builder = new StringBuilder();
+    		builder.append(QUOTE).append(key).append(QUOTE).append(COLON)
+    			.append(QUOTE).append(value).append(QUOTE);
+    		fields.add(builder.toString());
+    	}
+    	final String fieldsStr = String.join(",", fields);
+    	return "{" + fieldsStr + "}";
+    }
+    
+    /* END OF IAN'S MAIN BUSINESS LOGIC */
+    
+    
     
 	// false if the environment (JVM, OS, ...) makes model checking impossible.
 	// Might also result in warnings.
