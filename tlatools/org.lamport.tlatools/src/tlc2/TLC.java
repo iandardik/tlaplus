@@ -370,14 +370,17 @@ public class TLC {
 	private static final String SPEC_NAME = "spec_name";
 	private static final String SPEC1_NAME = "spec1_name";
 	private static final String SPEC2_NAME = "spec2_name";
-	private static final String SPEC1_ERR_PRE_NAME = "spec1_err_pre_name";
-	private static final String SPEC2_ERR_PRE_NAME = "spec2_err_pre_name";
-	private static final String SPEC1_ERR_POST_NAME = "spec1_err_post_name";
-	private static final String SPEC2_ERR_POST_NAME = "spec2_err_post_name";
+	
+	private static final String COMBINED_ERR_PRE_TLA = "combined_err_pre_tla";
+	private static final String COMBINED_ERR_POST_TLA = "combined_err_post_tla";
+	private static final String SPEC1_SAT_SPEC2_CFG = "spec1_sat_spec2_cfg";
+	private static final String SPEC2_SAT_SPEC1_CFG = "spec2_sat_spec1_cfg";
 	
 	private static final String EMPTY_SPEC_SUFFIX = "_spec_is_empty";
 	private static final String DIFF_REP_STATES_EMPTY = "diff_rep_states_empty";
-	private static final String IS_SAFE_SUFFIX = "_is_safe";
+	private static final String SPEC_IS_SAFE = "spec_is_safe";
+	private static final String SPEC1_IS_SAFE = "spec1_is_safe";
+	private static final String SPEC2_IS_SAFE = "spec2_is_safe";
 	private static final String TRUE = "true";
 	private static final String FALSE = "false";
 	
@@ -441,16 +444,22 @@ public class TLC {
     	TLC tlc2 = new TLC();
     	runTLC(tla1, cfg1, tlc1);
     	runTLC(tla2, cfg2, tlc2);
-
+    	
     	jsonOutput.put(COMPARISON_TYPE, SPEC_TO_SPEC);
     	jsonOutput.put(SPEC1_NAME, tlc1.getSpecName());
     	jsonOutput.put(SPEC2_NAME, tlc2.getSpecName());
-    	jsonOutput.put(tlc1.getSpecName() + IS_SAFE_SUFFIX, tlc1.getKripke().isSafe() ? TRUE : FALSE);
-    	jsonOutput.put(tlc2.getSpecName() + IS_SAFE_SUFFIX, tlc2.getKripke().isSafe() ? TRUE : FALSE);
+    	jsonOutput.put(SPEC1_IS_SAFE, tlc1.getKripke().isSafe() ? TRUE : FALSE);
+    	jsonOutput.put(SPEC2_IS_SAFE, tlc2.getKripke().isSafe() ? TRUE : FALSE);
     	
-    	// create err pre TLA+ spec
+    	// create err pre/post TLA+ specs
     	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonOutput);
     	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonOutput);
+    	
+    	// create the cfgs for comparing the pre/post specs
+    	final String spec1SatSpec2Cfg = specSatConfig("Spec1", "Spec2", outputLoc);
+    	final String spec2SatSpec1Cfg = specSatConfig("Spec2", "Spec1", outputLoc);
+    	jsonOutput.put(SPEC1_SAT_SPEC2_CFG, spec1SatSpec2Cfg);
+    	jsonOutput.put(SPEC2_SAT_SPEC1_CFG, spec2SatSpec1Cfg);
     	
     	// compute the representation for \eta(spec2,P) - \eta(spec1,P)
     	computeDiffRep(tlc1, tlc2, outputLoc, jsonOutput);
@@ -465,7 +474,7 @@ public class TLC {
     	Set<String> safetyBoundaryStrs = stateSetToStringSet(safetyBoundary);
     	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc);
     	createDiffStateRepFormula(safetyBoundaryStrs, tlaFile, tlc, outputLoc, jsonOutput);
-    	jsonOutput.put(tlc.getSpecName() + IS_SAFE_SUFFIX, kripke.isSafe() ? TRUE : FALSE);
+    	jsonOutput.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     }
     
     private static void computeDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc, Map<String,String> jsonOutput) {
@@ -475,13 +484,19 @@ public class TLC {
     	ExtKripke errPost2 = tlc2.getKripke().createErrPost();
     	
     	if (errPre1.isEmpty() && errPre2.isEmpty()) {
-    		System.out.println("Both specs are maximally robust.");
+        	jsonOutput.put(SPEC1_IS_SAFE, TRUE);
+        	jsonOutput.put(SPEC2_IS_SAFE, TRUE);
+    		//System.out.println("Both specs are maximally robust.");
     	}
     	else if (errPre1.isEmpty()) {
-    		System.out.println("Spec 1 is maximally robust (M1_err is empty).");
+        	jsonOutput.put(SPEC1_IS_SAFE, TRUE);
+        	jsonOutput.put(SPEC2_IS_SAFE, FALSE);
+    		//System.out.println("Spec 1 is maximally robust (M1_err is empty).");
     	}
     	else if (errPre2.isEmpty()) {
-    		System.out.println("Spec 2 is maximally robust (M2_err is empty).");
+        	jsonOutput.put(SPEC1_IS_SAFE, FALSE);
+        	jsonOutput.put(SPEC2_IS_SAFE, TRUE);
+    		//System.out.println("Spec 2 is maximally robust (M2_err is empty).");
     	}
     	else {
         	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
@@ -774,12 +789,8 @@ public class TLC {
     	final String tag = "ErrPre";
     	final String specName1 = createErrPre(tag, tlc1, tla1, cfg1, vars1, outputLoc, jsonOutput);
     	final String specName2 = createErrPre(tag, tlc2, tla2, cfg2, vars2, outputLoc, jsonOutput);
-    	
-    	jsonOutput.put(SPEC1_ERR_PRE_NAME, specName1);
-    	jsonOutput.put(SPEC2_ERR_PRE_NAME, specName2);
-    	
-    	combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
-    	combineConfig(tag, outputLoc);
+    	final String combineSpecName = combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
+        jsonOutput.put(COMBINED_ERR_PRE_TLA, combineSpecName);
     }
     
     private static String createErrPre(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars,
@@ -804,12 +815,8 @@ public class TLC {
     	final String tag = "ErrPost";
     	final String specName1 = createErrPost(tag, tlc1, tla1, cfg1, vars1, outputLoc, jsonOutput);
     	final String specName2 = createErrPost(tag, tlc2, tla2, cfg2, vars2, outputLoc, jsonOutput);
-    	
-    	jsonOutput.put(SPEC1_ERR_POST_NAME, specName1);
-    	jsonOutput.put(SPEC2_ERR_POST_NAME, specName2);
-    	
-    	combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
-    	combineConfig(tag, outputLoc);
+    	final String combineSpecName = combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
+        jsonOutput.put(COMBINED_ERR_POST_TLA, combineSpecName);
     }
     
     private static String createErrPost(final String tag, final TLC tlc, final String tla, final String cfg, Set<String> vars,
@@ -824,16 +831,16 @@ public class TLC {
     	return specName;
     }
     
-    private static void combineConfig(final String tag, final String outputLoc) {
+    private static String specSatConfig(final String spec1, final String spec2, final String outputLoc) {
         StringBuilder builder = new StringBuilder();
-        builder.append("SPECIFICATION Spec").append("\n");
-        builder.append("PROPERTY Safety");
-        
-        final String file = outputLoc + "Combined_" + tag + ".cfg";
+        builder.append("SPECIFICATION ").append(spec1).append("\n");
+        builder.append("PROPERTY ").append(spec2);
+        final String file = outputLoc + spec1 + "Sat" + spec2 + ".cfg";
         writeFile(file, builder.toString());
+        return file;
     }
     
-    private static void combineSpec(final String tag, final String specName1, final String specName2, final Set<String> vars1, final Set<String> vars2, final String outputLoc) {
+    private static String combineSpec(final String tag, final String specName1, final String specName2, final Set<String> vars1, final Set<String> vars2, final String outputLoc) {
         final String specName = "Combined_" + tag;
         final String varsSeqName = "vars_" + tag;
         final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
@@ -850,8 +857,8 @@ public class TLC {
         
         final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + instanceWithList(varNameList1);
         final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + instanceWithList(varNameList2);
-        final String specDef = "Spec == S2!Spec";
-        final String safetyDef = "Safety == S1!Spec";
+        final String spec1Def = "Spec1 == S1!Spec";
+        final String spec2Def = "Spec2 == S2!Spec";
 
         StringBuilder builder = new StringBuilder();
         builder.append(specDecl).append("\n");
@@ -861,13 +868,15 @@ public class TLC {
         builder.append("\n");
         builder.append(spec2).append("\n");
         builder.append("\n");
-        builder.append(specDef).append("\n");
-        builder.append(safetyDef).append("\n");
+        builder.append(spec1Def).append("\n");
+        builder.append(spec2Def).append("\n");
         builder.append(endModule).append("\n");
         builder.append("\n");
         
         final String name = outputLoc + specName + ".tla";
         writeFile(name, builder.toString());
+        
+        return name;
     }
     
     private static void runTLCExtractStateSpace(final String tlaFile, final TLC tlc, final String outputLoc, TLC tlcTypeOK) {
