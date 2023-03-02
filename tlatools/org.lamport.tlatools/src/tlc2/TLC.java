@@ -392,12 +392,28 @@ public class TLC {
 	private static final String FALSE = "false";
 
 	private static final String SORTS_MAP_FILE = "sorts_map_file";
-	private static final String SORTS_MAP1_FILE = "sorts1_map_file";
-	private static final String SORTS_MAP2_FILE = "sorts2_map_file";
+	private static final String SORTS_MAP1_FILE = "sorts_map_file1";
+	private static final String SORTS_MAP2_FILE = "sorts_map_file2";
 	
 	private static final String DIFF_REP_STATE_FORMULA_ERROR = "diff_rep_state_formula_error";
 	private static final String MISSING_TYPEOK = "missing_typeok";
 	private static final String MISSING_BOTH_TYPEOKS = "missing_both_typeoks";
+	
+	private enum SpecScope {
+		Spec, Spec1, Spec2
+	}
+	
+	private static String keyForSpecScope(SpecScope scope, String key, String key1, String key2) {
+		switch (scope) {
+		case Spec:
+			return key;
+		case Spec1:
+			return key1;
+		case Spec2:
+			return key2;
+		}
+		throw new RuntimeException("Invalid SpecScope provided");
+	}
 	
 	
 	/*
@@ -482,7 +498,7 @@ public class TLC {
     	ExtKripke kripke = tlc.getKripke();
     	Set<TLCState> safetyBoundary = kripke.safetyBoundary();
     	Set<String> safetyBoundaryStrs = stateSetToStringSet(safetyBoundary);
-    	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc, jsonOutput);
+    	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc, SpecScope.Spec, jsonOutput);
     	createDiffStateRepFormula(safetyBoundaryStrs, tlaFile, tlc, tlc.getSpecName(), outputLoc, jsonOutput);
     	jsonOutput.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     }
@@ -514,16 +530,16 @@ public class TLC {
     		final String spec2 = tlc2.getSpecName();
         	final String diffRepStatesFileName1 = "diff_rep_" + spec1;
         	final String diffRepStatesFileName2 = "diff_rep_" + spec2;
-    		computeDiffRepWrtOneSpec(true, spec1, errPre2, errPost2, errPre1, errPost1, tlc1, tlc2, diffRepStatesFileName1, outputLoc, jsonOutput);
-    		computeDiffRepWrtOneSpec(false, spec2, errPre1, errPost1, errPre2, errPost2, tlc2, tlc1, diffRepStatesFileName2, outputLoc, jsonOutput);
+    		computeDiffRepWrtOneSpec(errPre2, errPost2, errPre1, errPost1, tlc1, tlc2, diffRepStatesFileName1, spec1, outputLoc, SpecScope.Spec1, jsonOutput);
+    		computeDiffRepWrtOneSpec(errPre1, errPost1, errPre2, errPost2, tlc2, tlc1, diffRepStatesFileName2, spec2, outputLoc, SpecScope.Spec2, jsonOutput);
     	}
     }
 
 	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
-    private static void computeDiffRepWrtOneSpec(final boolean isSpec1, final String refSpec,
-    		final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
-    		final TLC tlc1, final TLC tlc2, final String diffRepStatesFileName, final String outputLoc, Map<String,String> jsonOutput) {
-    	final String diffRepStateEmptyKey = isSpec1 ? DIFF_REP_STATES1_EMPTY : DIFF_REP_STATES2_EMPTY;
+    private static void computeDiffRepWrtOneSpec(final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
+    		final TLC tlc1, final TLC tlc2, final String diffRepStatesFileName, final String refSpec, final String outputLoc,
+    		final SpecScope specScope, Map<String,String> jsonOutput) {
+    	final String diffRepStateEmptyKey = keyForSpecScope(specScope, DIFF_REP_STATES_EMPTY, DIFF_REP_STATES1_EMPTY, DIFF_REP_STATES2_EMPTY);
     	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
@@ -531,8 +547,8 @@ public class TLC {
         	// the two specs have overlapping error traces / state space so we compare them
         	Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRep);
         	Set<String> diffRepStateStrs = stateSetToStringSet(diffRepStates);
-        	writeDiffRepStatesToFile(diffRepStateStrs, diffRepStatesFileName, isSpec1, outputLoc, jsonOutput);
-        	createDiffStateRepFormula(diffRepStateStrs, tlc1, tlc2, isSpec1, refSpec, outputLoc, jsonOutput);
+        	writeDiffRepStatesToFile(diffRepStateStrs, diffRepStatesFileName, outputLoc, specScope, jsonOutput);
+        	createDiffStateRepFormula(diffRepStateStrs, tlc1, tlc2, refSpec, outputLoc, specScope, jsonOutput);
         	jsonOutput.put(diffRepStateEmptyKey, FALSE);
     	}
     	else {
@@ -541,14 +557,9 @@ public class TLC {
     	}
     }
     
-    private static void writeDiffRepStatesToFile(final Set<String> diffRepStateStrs, final String name,
-    		final String outputLoc, Map<String,String> jsonOutput) {
-    	writeDiffRepStatesToFile(diffRepStateStrs, name, DIFF_REP_FILE, outputLoc, jsonOutput);
-    }
-    
-    private static void writeDiffRepStatesToFile(final Set<String> diffRepStateStrs, final String name, final boolean isSpec1,
-    		final String outputLoc, Map<String,String> jsonOutput) {
-    	final String diffRepFileNameKey = isSpec1 ? DIFF_REP_FILE1 : DIFF_REP_FILE2;
+    private static void writeDiffRepStatesToFile(final Set<String> diffRepStateStrs, final String name, final String outputLoc,
+    		final SpecScope specScope, Map<String,String> jsonOutput) {
+    	final String diffRepFileNameKey = keyForSpecScope(specScope, DIFF_REP_FILE, DIFF_REP_FILE1, DIFF_REP_FILE2);
     	writeDiffRepStatesToFile(diffRepStateStrs, name, diffRepFileNameKey, outputLoc, jsonOutput);
     }
     
@@ -568,104 +579,73 @@ public class TLC {
     	// a TypeOK is required to gather the info we need to create a sep.fol file
     	final String typeOKInv = "TypeOK";
     	final boolean hasTypeOK = hasInvariant(tlc, typeOKInv);
-    	if (!hasTypeOK) {
+    	if (hasTypeOK) {
+        	// compute the entire state space
+        	final TLC tlcTypeOK = new TLC();
+        	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
+        	createDiffStateRepFormula(diffRepStateStrs, tlcTypeOK, refSpec, outputLoc, SpecScope.Spec, jsonOutput);
+    	}
+    	else {
         	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);
-    		return;
-    	}
-    	
-    	// diffRepStateStrs is the set of positive examples
-    	
-    	// compute the entire state space
-    	TLC tlcTypeOK = new TLC();
-    	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
-    	ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
-    	Set<TLCState> stateSpace = stateSpaceKripke.reach();
-    	Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
-    	
-    	// notDiffStateStrs is the set of negative examples
-    	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffRepStateStrs);
-    	//System.out.println("not diff states size: " + notDiffStateStrs.size());
-    	
-    	// we can automatically extract types by looking at the states in stateSpace.
-    	// there is no need to examine TypeOK
-    	// TODO it would be a nice sanity check to make sure the vars in varTypes match those in tlc1 and tlc2
-    	// TODO type domains should be mutually exclusive, we need to bail if they aren't
-    	Set<StateVarType> types = StateVarType.determineTypes(stateSpaceStrs);
-    	Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpaceStrs);
-    	
-    	// in the diffStates, figure out which state vars may have multiple values.
-    	// we will then attempt to create a formula to figure out which values we want.
-    	// we abuse the word "type" in StateVarType here.
-    	Map<String, StateVarType> diffStateVarDomains = StateVarType.determineVarTypes(diffRepStateStrs);
-    	Set<StateVarType> nonConstValueTypes = new HashSet<>();
-    	Set<String> nonConstValueVars = new HashSet<>();
-    	Set<String> constValueVars = new HashSet<>();
-    	Map<String, String> constValueValues = new HashMap<>();
-    	determineConstAndNonConstDiffStateVars(diffStateVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
-    	
-    	if (constValueVars.size() > 0) {
-    		final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, jsonOutput);
-            jsonOutput.put(CONST_VALUE_CONSTRAINT, constValueConstraint);
-    	}
-    	if (nonConstValueVars.size() > 0) {
-        	final String separatorFile = buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, refSpec, outputLoc);
-        	final String sortsMapFile = writeSortsMap(nonConstValueTypes, refSpec, outputLoc);
-            jsonOutput.put(SEPARATOR_FILE, separatorFile);
-            jsonOutput.put(SORTS_MAP_FILE, sortsMapFile);
     	}
     }
     
-    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final TLC tlc1, final TLC tlc2, final boolean isSpec1,
-    		final String refSpec, final String outputLoc, Map<String,String> jsonOutput) {
+    private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final TLC tlc1, final TLC tlc2, final String refSpec,
+    		final String outputLoc, final SpecScope specScope, Map<String,String> jsonOutput) {
     	// a TypeOK is required to gather the info we need to create a sep.fol file
     	final String typeOKInv = "TypeOK";
     	final boolean bothHaveTypeOK = hasInvariant(tlc1, typeOKInv) && hasInvariant(tlc2, typeOKInv);
-    	if (!bothHaveTypeOK) {
-        	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_BOTH_TYPEOKS);
-    		return;
+    	if (bothHaveTypeOK) {
+        	// compute the entire state space
+        	final TLC tlcTypeOK = new TLC();
+        	runTLCExtractStateSpace(tlc1, tlc2, outputLoc, tlcTypeOK);
+        	createDiffStateRepFormula(diffRepStateStrs, tlcTypeOK, refSpec, outputLoc, specScope, jsonOutput);
     	}
+    	else {
+        	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_BOTH_TYPEOKS);
+    	}
+    }
+    
+    private static void createDiffStateRepFormula(final Set<String> posExamples, final TLC tlcTypeOK, final String refSpec,
+    		final String outputLoc, final SpecScope specScope, Map<String,String> jsonOutput) {
+    	final ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
+    	final Set<TLCState> stateSpace = stateSpaceKripke.reach();
+    	final Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
 
     	// diffRepStateStrs is the set of positive examples
-    	
-    	// compute the entire state space
-    	TLC tlcTypeOK = new TLC();
-    	runTLCExtractStateSpace(tlc1, tlc2, outputLoc, tlcTypeOK);
-    	ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
-    	Set<TLCState> stateSpace = stateSpaceKripke.reach();
-    	Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
-    	
     	// notDiffStateStrs is the set of negative examples
-    	Set<String> notDiffStateStrs = ExtKripke.setMinus(stateSpaceStrs, diffRepStateStrs);
-    	//System.out.println("not diff states size: " + notDiffStateStrs.size());
+    	final Set<String> negExamples = ExtKripke.setMinus(stateSpaceStrs, posExamples);
     	
     	// we can automatically extract types by looking at the states in stateSpace.
     	// there is no need to examine TypeOK
     	// TODO it would be a nice sanity check to make sure the vars in varTypes match those in tlc1 and tlc2
     	// TODO type domains should be mutually exclusive, we need to bail if they aren't
-    	Set<StateVarType> types = StateVarType.determineTypes(stateSpaceStrs);
-    	Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpaceStrs);
+    	final Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpaceStrs);
     	
-    	// in the diffStates, figure out which state vars may have multiple values.
-    	// we will then attempt to create a formula to figure out which values we want.
+    	// in the posExamples, figure out which state vars may have multiple values.
+    	// we will then leverage the FOL separator tool to create a formula that describes these values.
     	// we abuse the word "type" in StateVarType here.
-    	Map<String, StateVarType> diffStateVarDomains = StateVarType.determineVarTypes(diffRepStateStrs);
+    	final Map<String, StateVarType> posExampleVarDomains = StateVarType.determineVarTypes(posExamples);
     	Set<StateVarType> nonConstValueTypes = new HashSet<>();
     	Set<String> nonConstValueVars = new HashSet<>();
     	Set<String> constValueVars = new HashSet<>();
     	Map<String, String> constValueValues = new HashMap<>();
-    	determineConstAndNonConstDiffStateVars(diffStateVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
+    	determineConstAndNonConstVars(posExampleVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
     	
-    	final String constValueConstraintKey = isSpec1 ? CONST_VALUE_CONSTRAINT1 : CONST_VALUE_CONSTRAINT2;
-    	final String separatorFileKey = isSpec1 ? SEPARATOR1_FILE : SEPARATOR2_FILE;
-    	final String sortsMapFileKey = isSpec1 ? SORTS_MAP1_FILE : SORTS_MAP2_FILE;
+    	// translate (TLA+ state var values) -> (FOL Separator constants)
+    	final Map<String,String> valueToConstantMap = tlaValueToSeparatorConstant(nonConstValueTypes);
     	
     	if (constValueVars.size() > 0) {
-        	final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, jsonOutput);
+    		final String constValueConstraintKey = keyForSpecScope(specScope, CONST_VALUE_CONSTRAINT, CONST_VALUE_CONSTRAINT1, CONST_VALUE_CONSTRAINT2);
+    		final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, jsonOutput);
             jsonOutput.put(constValueConstraintKey, constValueConstraint);
     	}
     	if (nonConstValueVars.size() > 0) {
-    		final String separatorFile = buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, refSpec, outputLoc);
-    		final String sortsMapFile = writeSortsMap(nonConstValueTypes, refSpec, outputLoc);
+    		final String separatorFileKey = keyForSpecScope(specScope, SEPARATOR_FILE, SEPARATOR1_FILE, SEPARATOR2_FILE);
+    		final String sortsMapFileKey = keyForSpecScope(specScope, SORTS_MAP_FILE, SORTS_MAP1_FILE, SORTS_MAP2_FILE);
+        	final String separatorFile = buildAndWriteSeparatorFOL(posExamples, negExamples, varTypes, nonConstValueVars, nonConstValueTypes,
+        			valueToConstantMap, refSpec, outputLoc);
+        	final String sortsMapFile = writeSortsMap(nonConstValueTypes, refSpec, outputLoc);
             jsonOutput.put(separatorFileKey, separatorFile);
             jsonOutput.put(sortsMapFileKey, sortsMapFile);
     	}
@@ -687,15 +667,17 @@ public class TLC {
         return path;
     }
     
-    private static String buildAndWriteSeparatorFOL(final Set<String> diffStateStrs, final Map<String, StateVarType> varTypes, final Set<String> notDiffStateStrs,
-    		final Set<StateVarType> nonConstValueTypes, final Set<String> nonConstValueVars, final String specName, final String outputLoc) {
+    private static String buildAndWriteSeparatorFOL(final Set<String> posExamples, final Set<String> negExamples, final Map<String, StateVarType> varTypes,
+    		final Set<String> nonConstValueVars, final Set<StateVarType> nonConstValueTypes, final Map<String,String> valueToConstantMap,
+    		final String specName, final String outputLoc) {
     	Set<String> consts = new HashSet<>();
     	Set<String> modelElements = new HashSet<>();
     	Set<String> modelElementDefs = new HashSet<>();
     	for (StateVarType type : nonConstValueTypes) {
-    		String typeName = type.getName();
+    		final String typeName = type.getName();
     		for (String e : type.getDomain()) {
-    			final String elem = toSeparatorString(e);
+    			assert(valueToConstantMap.containsKey(e));
+    			final String elem = valueToConstantMap.get(e);
     	    	consts.add("(constant " + elem + " " + typeName + ")");
     	    	modelElements.add("(" + elem + "Const " + typeName + ")");
     	    	modelElementDefs.add("(= " + elem + " " + elem + "Const)");
@@ -727,13 +709,13 @@ public class TLC {
     	
     	// models
     	Set<String> posModels = new HashSet<>();
-    	for (String s : diffStateStrs) {
-    		final String pos = toSeparatorModel(s, "+", modelElements, modelElementDefs, nonConstValueVars);
+    	for (String s : posExamples) {
+    		final String pos = toSeparatorModel(s, "+", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
     		posModels.add(pos);
     		builder.append(pos);
     	}
-    	for (String s : notDiffStateStrs) {
-    		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVars);
+    	for (String s : negExamples) {
+    		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
     		if (!posModels.contains(neg.replace('-', '+'))) {
     			builder.append(neg);
     		}
@@ -756,7 +738,7 @@ public class TLC {
         return stringEscape(constValueConstraint);
     }
     
-    private static void determineConstAndNonConstDiffStateVars(final Map<String, StateVarType> diffStateVarDomains, final Map<String, StateVarType> varTypes,
+    private static void determineConstAndNonConstVars(final Map<String, StateVarType> diffStateVarDomains, final Map<String, StateVarType> varTypes,
     		Set<StateVarType> nonConstValueTypes, Set<String> nonConstValueVars, Set<String> constValueVars, Map<String, String> constValueValues) {
     	for (String var : diffStateVarDomains.keySet()) {
     		StateVarType t = diffStateVarDomains.get(var);
@@ -767,14 +749,15 @@ public class TLC {
     			constValueValues.put(var, exactValue);
     		} else {
     			StateVarType varType = varTypes.get(var);
-    			nonConstValueTypes.add(varType);
     			nonConstValueVars.add(var);
+    			nonConstValueTypes.add(varType);
     		}
     	}
     }
     
-    private static String toSeparatorModel(String tlaState, String label, Set<String> modelElements, Set<String> modelElementDefs, Set<String> nonConstValueVars) {
-    	final String sms = toSeparatorModelString(tlaState, nonConstValueVars);
+    private static String toSeparatorModel(final String tlaState, final String label, final Set<String> modelElements,
+    		final Set<String> modelElementDefs, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
+    	final String sms = toSeparatorModelString(tlaState, nonConstValueVars, valueToConstantMap);
     	final String elementsStr = String.join(" ", modelElements);
     	
         StringBuilder builder = new StringBuilder();
@@ -790,13 +773,14 @@ public class TLC {
         return builder.toString();
     }
     
-    private static String toSeparatorModelString(String tlaState, Set<String> nonConstValueVars) {
+    private static String toSeparatorModelString(final String tlaState, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
     	ArrayList<String> separatorConjuncts = new ArrayList<>();
     	ArrayList<Pair<String,String>> stateAssignments = extractKeyValuePairsFromState(tlaState);
     	for (Pair<String,String> assg : stateAssignments) {
     		final String var = assg.first;
     		if (nonConstValueVars.contains(var)) {
-        		final String val = toSeparatorString(assg.second) + "Const";
+    			assert(valueToConstantMap.containsKey(assg.second));
+        		final String val = valueToConstantMap.get(assg.second) + "Const";
         		final String sepConjunct = "    (" + var + " " + val + ")";
         		separatorConjuncts.add(sepConjunct);
     		}
@@ -804,8 +788,24 @@ public class TLC {
 		return String.join("\n", separatorConjuncts);
     }
     
+    // translate (TLA+ state var values) -> (FOL Separator constants)
+    private static Map<String,String> tlaValueToSeparatorConstant(Set<StateVarType> types) {
+    	Map<String,String> map = new HashMap<>();
+    	for (StateVarType type : types) {
+    		for (String tlaVarValue : type.getDomain()) {
+    			final String folSepConstant = toSeparatorString(tlaVarValue);
+    			map.put(tlaVarValue, folSepConstant);
+    		}
+    	}
+    	return map;
+    }
+    
     private static String toSeparatorString(String str) {
-    	return str.replaceAll("[\"{}]+", "").trim();
+    	return str
+    			.replaceAll("[\\s]", "Ss_sS")
+    			.replaceAll("[\"]", "Qq_qQ")
+    			.replaceAll("[{]", "Lp_pL")
+    			.replaceAll("[}]", "Rp_pR");
     }
     
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {

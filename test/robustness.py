@@ -27,6 +27,12 @@ def load_sorts_map(sorts_map_file):
     contents = file.read()
     return json.loads(contents)
 
+def substituteTlaChars(form):
+    return form.replace("Ss_sS", " ")\
+        .replace("Qq_qQ", "\"")\
+        .replace("Lp_pL", "{")\
+        .replace("Rp_pR", "}")
+
 def print_constraint(const, non_const, sorts_map_file):
     print("Safety boundary rep formula (with sort definitions):")
     if non_const is not None and sorts_map_file is not None:
@@ -40,7 +46,7 @@ def print_constraint(const, non_const, sorts_map_file):
         conj = "/\\ " + ("\n/\\ ".join(conjuncts))
         print(conj)
     if non_const is not None:
-        conj = "/\\ " + non_const
+        conj = "/\\ " + substituteTlaChars(non_const)
         print(conj)
 
 def run_fol_separator(outdir, sep_file):
