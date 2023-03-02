@@ -675,8 +675,8 @@ public class TLC {
     	List<String> mappings = new ArrayList<>();
     	for (StateVarType type : nonConstValueTypes) {
     		final String name = "\"" + type.getName() + "\"";
-    		final String domain = "[\"" + String.join("\",\"", type.getDomain()) + "\"]";
-    		final String mapping = name + ":" + domain;
+    		final String domain = "{" + String.join(",", type.getDomain()) + "}";
+    		final String mapping = name + ":\"" + stringEscape(domain) + "\"";
     		mappings.add(mapping);
     	}
     	final String map = "{" + String.join(",", mappings) + "}";
@@ -694,7 +694,8 @@ public class TLC {
     	Set<String> modelElementDefs = new HashSet<>();
     	for (StateVarType type : nonConstValueTypes) {
     		String typeName = type.getName();
-    		for (String elem : type.getDomain()) {
+    		for (String e : type.getDomain()) {
+    			final String elem = toSeparatorString(e);
     	    	consts.add("(constant " + elem + " " + typeName + ")");
     	    	modelElements.add("(" + elem + "Const " + typeName + ")");
     	    	modelElementDefs.add("(= " + elem + " " + elem + "Const)");
@@ -752,7 +753,7 @@ public class TLC {
         	constraints.add(constraint);
         }
         final String constValueConstraint = String.join(", ", constraints);
-        return constValueConstraint;
+        return stringEscape(constValueConstraint);
     }
     
     private static void determineConstAndNonConstDiffStateVars(final Map<String, StateVarType> diffStateVarDomains, final Map<String, StateVarType> varTypes,
@@ -795,12 +796,16 @@ public class TLC {
     	for (Pair<String,String> assg : stateAssignments) {
     		final String var = assg.first;
     		if (nonConstValueVars.contains(var)) {
-        		final String val = assg.second + "Const";
+        		final String val = toSeparatorString(assg.second) + "Const";
         		final String sepConjunct = "    (" + var + " " + val + ")";
         		separatorConjuncts.add(sepConjunct);
     		}
     	}
 		return String.join("\n", separatorConjuncts);
+    }
+    
+    private static String toSeparatorString(String str) {
+    	return str.replaceAll("[\"{}]+", "").trim();
     }
     
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {
@@ -818,7 +823,7 @@ public class TLC {
     	String[] kvp = assg.split("=");
 		assert(kvp.length == 2);
 		final String key = kvp[0].trim();
-		final String val = kvp[1].trim().replaceAll("[\"{}]+", "").trim();
+		final String val = kvp[1].trim();
 		return new Pair<>(key,val);
     }
     
@@ -1212,6 +1217,18 @@ public class TLC {
     		System.out.println(s);
     	}
     }
+    
+    // thanks https://stackoverflow.com/questions/2406121/how-do-i-escape-a-string-in-java
+    private static String stringEscape(String s){
+	  return s.replace("\\", "\\\\")
+	          .replace("\t", "\\t")
+	          .replace("\b", "\\b")
+	          .replace("\n", "\\n")
+	          .replace("\r", "\\r")
+	          .replace("\f", "\\f")
+	          .replace("\'", "\\'")
+	          .replace("\"", "\\\"");
+	}
     
     private static String extractSyntaxFromSource(final String tla, final String loc) {
     	String[] parts = loc.replaceAll(",", "").split(" ");

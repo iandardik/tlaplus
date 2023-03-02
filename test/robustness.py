@@ -22,8 +22,19 @@ def non_const_constraint(jsonResult, outdir, key):
     else:
         return None
 
-def print_constraint(const, non_const):
-    print("Safety boundary rep formula:")
+def load_sorts_map(sorts_map_file):
+    file = open(sorts_map_file, "r")
+    contents = file.read()
+    return json.loads(contents)
+
+def print_constraint(const, non_const, sorts_map_file):
+    print("Safety boundary rep formula (with sort definitions):")
+    if non_const is not None and sorts_map_file is not None:
+        sorts_map = load_sorts_map(sorts_map_file)
+        for k,v in sorts_map.items():
+            if k in non_const:
+                sort_def = k + " == " + v
+                print(sort_def)
     if const is not None:
         conjuncts = const.split(", ")
         conj = "/\\ " + ("\n/\\ ".join(conjuncts))
@@ -107,12 +118,13 @@ def run_robustness(args):
         print("Spec is robust against ANY behavior or environment")
     else:
         diff_rep_file = jsonResult['diff_rep_file']
+        sorts_map_file = jsonResult['sorts_map_file'] if 'sorts_map_file' in jsonResult else None
         const_constr = const_constraint(jsonResult, 'const_value_constraint')
         non_const_constr = non_const_constraint(jsonResult, outdir, 'separator_file')
 
         print("TLA+ Module: " + spec_name)
         print("Safety boundary representation: " + diff_rep_file)
-        print_constraint(const_constr, non_const_constr)
+        print_constraint(const_constr, non_const_constr, sorts_map_file)
 
 def run_env(args):
     print("Not supported yet")
@@ -166,11 +178,12 @@ def run_comparison(args):
         diff_rep_states1_empty = jsonResult["diff_rep_states1_empty"]
         if diff_rep_states1_empty == "false":
             diff_rep_file = jsonResult["diff_rep_file1"]
+            sorts_map_file = jsonResult['sorts_map_file1'] if 'sorts_map_file1' in jsonResult else None
             const_constr = const_constraint(jsonResult, "const_value_constraint1")
             non_const_constr = non_const_constraint(jsonResult, outdir, "separator1_file")
             print("TLA+ Module Comparison: eta(" + spec1_name + ") - eta(" + spec2_name + ")")
             print("Safety boundary representation: " + diff_rep_file)
-            print_constraint(const_constr, non_const_constr)
+            print_constraint(const_constr, non_const_constr, sorts_map_file)
         else:
             print("the diff rep for eta(" + spec1_name + ") - eta(" + spec2_name + ") is empty")
 
@@ -179,11 +192,12 @@ def run_comparison(args):
         diff_rep_states2_empty = jsonResult["diff_rep_states2_empty"]
         if diff_rep_states2_empty == "false":
             diff_rep_file = jsonResult["diff_rep_file2"]
+            sorts_map_file = jsonResult['sorts_map_file2'] if 'sorts_map_file2' in jsonResult else None
             const_constr = const_constraint(jsonResult, "const_value_constraint2")
             non_const_constr = non_const_constraint(jsonResult, outdir, "separator2_file")
             print("TLA+ Module Comparison: eta(" + spec2_name + ") - eta(" + spec1_name + ")")
             print("Safety boundary representation: " + diff_rep_file)
-            print_constraint(const_constr, non_const_constr)
+            print_constraint(const_constr, non_const_constr, sorts_map_file)
         else:
             print("the diff rep for eta(" + spec2_name + ") - eta(" + spec1_name + ") is empty")
 
