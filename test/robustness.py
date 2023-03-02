@@ -9,15 +9,15 @@ tlcian_jar="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/bin/tlc-ian.
 sep_source_path="/Users/idardik/Documents/CMU/folseparators"
 
 
-def const_constraint(jsonResult):
-    if 'const_value_constraint' in jsonResult:
-        return jsonResult['const_value_constraint']
+def const_constraint(jsonResult, key):
+    if key in jsonResult:
+        return jsonResult[key]
     else:
         return None
 
-def non_const_constraint(jsonResult, outdir):
-    if 'separator_file_name' in jsonResult:
-        sep_file = jsonResult['separator_file_name']
+def non_const_constraint(jsonResult, outdir, key):
+    if key in jsonResult:
+        sep_file = jsonResult[key]
         return run_fol_separator(outdir, sep_file)
     else:
         return None
@@ -25,7 +25,7 @@ def non_const_constraint(jsonResult, outdir):
 def run_fol_separator(outdir, sep_file):
     orig_dir = os.getcwd()
     os.chdir(sep_source_path)
-    sep_path = orig_dir + "/" + outdir + "/" + sep_file
+    sep_path = orig_dir + "/" + sep_file
     cmd_args = ["python3", "-m", "separators", "--separate", "--no-cvc4", "--quiet", sep_path]
     result = subprocess.run(cmd_args, text=True, capture_output=True)
     os.chdir(orig_dir)
@@ -96,12 +96,12 @@ def run_robustness(args):
     if spec_is_safe == "true":
         print("Spec is robust against ANY behavior or environment")
     else:
-        diff_rep_file = jsonResult['diff_rep_file_name']
-        const_constr = const_constraint(jsonResult)
-        non_const_constr = non_const_constraint(jsonResult, outdir)
+        diff_rep_file = jsonResult['diff_rep_file']
+        const_constr = const_constraint(jsonResult, 'const_value_constraint')
+        non_const_constr = non_const_constraint(jsonResult, outdir, 'separator_file')
 
         print("TLA+ Module: " + spec_name)
-        print("Safety boundary representation: " + outdir + "/" + diff_rep_file + ".txt")
+        print("Safety boundary representation: " + diff_rep_file)
         if const_constr is not None:
             print("const constraint: " + const_constr)
         if non_const_constr is not None:
@@ -153,6 +153,40 @@ def run_comparison(args):
             print(spec2_name + " is strictly more robust than " + spec1_name)
         else:
             print("The robustness of the two specs are incomparable")
+
+        # show \eta1-\eta2
+        print("")
+        diff_rep_states1_empty = jsonResult["diff_rep_states1_empty"]
+        if diff_rep_states1_empty == "false":
+            diff_rep_file = jsonResult["diff_rep_file1"]
+            const_constr = const_constraint(jsonResult, "const_value_constraint1")
+            non_const_constr = non_const_constraint(jsonResult, outdir, "separator1_file")
+
+            print("TLA+ Module Comparison: eta(" + spec1_name + ") - eta(" + spec2_name + ")")
+            print("Safety boundary representation: " + diff_rep_file)
+            if const_constr is not None:
+                print("const constraint: " + const_constr)
+            if non_const_constr is not None:
+                print("non const constraint: " + non_const_constr)
+        else:
+            print("the diff rep for eta(" + spec1_name + ") - eta(" + spec2_name + ") is empty")
+
+        # show \eta2-\eta1
+        print("")
+        diff_rep_states2_empty = jsonResult["diff_rep_states2_empty"]
+        if diff_rep_states2_empty == "false":
+            diff_rep_file = jsonResult["diff_rep_file2"]
+            const_constr = const_constraint(jsonResult, "const_value_constraint2")
+            non_const_constr = non_const_constraint(jsonResult, outdir, "separator2_file")
+
+            print("TLA+ Module Comparison: eta(" + spec2_name + ") - eta(" + spec1_name + ")")
+            print("Safety boundary representation: " + diff_rep_file)
+            if const_constr is not None:
+                print("const constraint: " + const_constr)
+            if non_const_constr is not None:
+                print("non const constraint: " + non_const_constr)
+        else:
+            print("the diff rep for eta(" + spec2_name + ") - eta(" + spec1_name + ") is empty")
 
 def create_args():
     parser = argparse.ArgumentParser(
