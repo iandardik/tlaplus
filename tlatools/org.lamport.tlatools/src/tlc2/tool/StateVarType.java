@@ -26,6 +26,20 @@ public class StateVarType {
 	public Set<String> getDomain() {
 		return this.domain;
 	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof StateVarType) {
+			StateVarType other = (StateVarType) o;
+			return this.domain.equals(other.domain);
+		}
+		return false;
+	}
+	
+	@Override
+	public int hashCode() {
+		return this.domain.hashCode();
+	}
 
 	
     public static Map<String, StateVarType> determineVarTypes(Set<String> stateSpace) {

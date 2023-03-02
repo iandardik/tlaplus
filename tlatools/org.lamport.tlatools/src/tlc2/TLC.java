@@ -390,6 +390,10 @@ public class TLC {
 	private static final String SPEC2_IS_SAFE = "spec2_is_safe";
 	private static final String TRUE = "true";
 	private static final String FALSE = "false";
+
+	private static final String SORTS_MAP_FILE = "sorts_map_file";
+	private static final String SORTS_MAP1_FILE = "sorts1_map_file";
+	private static final String SORTS_MAP2_FILE = "sorts2_map_file";
 	
 	private static final String DIFF_REP_STATE_FORMULA_ERROR = "diff_rep_state_formula_error";
 	private static final String MISSING_TYPEOK = "missing_typeok";
@@ -605,7 +609,9 @@ public class TLC {
     	}
     	if (nonConstValueVars.size() > 0) {
         	final String separatorFile = buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, refSpec, outputLoc);
+        	final String sortsMapFile = writeSortsMap(nonConstValueTypes, refSpec, outputLoc);
             jsonOutput.put(SEPARATOR_FILE, separatorFile);
+            jsonOutput.put(SORTS_MAP_FILE, sortsMapFile);
     	}
     }
     
@@ -651,6 +657,7 @@ public class TLC {
     	
     	final String constValueConstraintKey = isSpec1 ? CONST_VALUE_CONSTRAINT1 : CONST_VALUE_CONSTRAINT2;
     	final String separatorFileKey = isSpec1 ? SEPARATOR1_FILE : SEPARATOR2_FILE;
+    	final String sortsMapFileKey = isSpec1 ? SORTS_MAP1_FILE : SORTS_MAP2_FILE;
     	
     	if (constValueVars.size() > 0) {
         	final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, jsonOutput);
@@ -658,8 +665,26 @@ public class TLC {
     	}
     	if (nonConstValueVars.size() > 0) {
     		final String separatorFile = buildAndWriteSeparatorFOL(diffRepStateStrs, varTypes, notDiffStateStrs, nonConstValueTypes, nonConstValueVars, refSpec, outputLoc);
+    		final String sortsMapFile = writeSortsMap(nonConstValueTypes, refSpec, outputLoc);
             jsonOutput.put(separatorFileKey, separatorFile);
+            jsonOutput.put(sortsMapFileKey, sortsMapFile);
     	}
+    }
+    
+    private static String writeSortsMap(final Set<StateVarType> nonConstValueTypes, final String specName, final String outputLoc) {
+    	List<String> mappings = new ArrayList<>();
+    	for (StateVarType type : nonConstValueTypes) {
+    		final String name = "\"" + type.getName() + "\"";
+    		final String domain = "[\"" + String.join("\",\"", type.getDomain()) + "\"]";
+    		final String mapping = name + ":" + domain;
+    		mappings.add(mapping);
+    	}
+    	final String map = "{" + String.join(",", mappings) + "}";
+    	
+    	final String sortsMapFile = specName + "_sorts_map.json";
+    	final String path = outputLoc + sortsMapFile;
+        writeFile(path, map);
+        return path;
     }
     
     private static String buildAndWriteSeparatorFOL(final Set<String> diffStateStrs, final Map<String, StateVarType> varTypes, final Set<String> notDiffStateStrs,
@@ -714,9 +739,9 @@ public class TLC {
     	}
     	
     	final String separatorFile = specName + ".fol";
-    	final String file = outputLoc + separatorFile;
-        writeFile(file, builder.toString());
-        return file;
+    	final String path = outputLoc + separatorFile;
+        writeFile(path, builder.toString());
+        return path;
     }
 
     private static String buildConstValueConstraint(final Set<String> constValueVars, final Map<String, String> constValueValues, Map<String,String> jsonOutput) {

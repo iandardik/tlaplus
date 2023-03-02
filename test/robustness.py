@@ -6,7 +6,7 @@ import subprocess
 
 tlc_jar="/Users/idardik/bin/tla2tools.jar"
 tlcian_jar="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/bin/tlc-ian.jar"
-sep_source_path="/Users/idardik/Documents/CMU/folseparators"
+sep_source_path="/Users/idardik/Documents/CMU/folseparators-tla"
 
 
 def const_constraint(jsonResult, key):
@@ -21,6 +21,16 @@ def non_const_constraint(jsonResult, outdir, key):
         return run_fol_separator(outdir, sep_file)
     else:
         return None
+
+def print_constraint(const, non_const):
+    print("Safety boundary rep formula:")
+    if const is not None:
+        conjuncts = const.split(", ")
+        conj = "/\\ " + ("\n/\\ ".join(conjuncts))
+        print(conj)
+    if non_const is not None:
+        conj = "/\\ " + non_const
+        print(conj)
 
 def run_fol_separator(outdir, sep_file):
     orig_dir = os.getcwd()
@@ -102,10 +112,7 @@ def run_robustness(args):
 
         print("TLA+ Module: " + spec_name)
         print("Safety boundary representation: " + diff_rep_file)
-        if const_constr is not None:
-            print("const constraint: " + const_constr)
-        if non_const_constr is not None:
-            print("non const constraint: " + non_const_constr)
+        print_constraint(const_constr, non_const_constr)
 
 def run_env(args):
     print("Not supported yet")
@@ -161,13 +168,9 @@ def run_comparison(args):
             diff_rep_file = jsonResult["diff_rep_file1"]
             const_constr = const_constraint(jsonResult, "const_value_constraint1")
             non_const_constr = non_const_constraint(jsonResult, outdir, "separator1_file")
-
             print("TLA+ Module Comparison: eta(" + spec1_name + ") - eta(" + spec2_name + ")")
             print("Safety boundary representation: " + diff_rep_file)
-            if const_constr is not None:
-                print("const constraint: " + const_constr)
-            if non_const_constr is not None:
-                print("non const constraint: " + non_const_constr)
+            print_constraint(const_constr, non_const_constr)
         else:
             print("the diff rep for eta(" + spec1_name + ") - eta(" + spec2_name + ") is empty")
 
@@ -178,13 +181,9 @@ def run_comparison(args):
             diff_rep_file = jsonResult["diff_rep_file2"]
             const_constr = const_constraint(jsonResult, "const_value_constraint2")
             non_const_constr = non_const_constraint(jsonResult, outdir, "separator2_file")
-
             print("TLA+ Module Comparison: eta(" + spec2_name + ") - eta(" + spec1_name + ")")
             print("Safety boundary representation: " + diff_rep_file)
-            if const_constr is not None:
-                print("const constraint: " + const_constr)
-            if non_const_constr is not None:
-                print("non const constraint: " + non_const_constr)
+            print_constraint(const_constr, non_const_constr)
         else:
             print("the diff rep for eta(" + spec2_name + ") - eta(" + spec1_name + ") is empty")
 
