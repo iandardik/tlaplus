@@ -32,9 +32,6 @@ public class Robustness {
 	private static final String SPEC1_SAT_SPEC2_CFG = "spec1_sat_spec2_cfg";
 	private static final String SPEC2_SAT_SPEC1_CFG = "spec2_sat_spec1_cfg";
 	
-	private static final String DIFF_REP_STATES_EMPTY = "diff_rep_states_empty";
-	private static final String DIFF_REP_STATES1_EMPTY = "diff_rep_states1_empty";
-	private static final String DIFF_REP_STATES2_EMPTY = "diff_rep_states2_empty";
 	private static final String SPEC_IS_SAFE = "spec_is_safe";
 	private static final String SPEC1_IS_SAFE = "spec1_is_safe";
 	private static final String SPEC2_IS_SAFE = "spec2_is_safe";

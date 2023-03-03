@@ -17,32 +17,18 @@ public class RobustDiffRep {
 	private static final String DIFF_REP_FILE = "diff_rep_file";
 	private static final String DIFF_REP_FILE1 = "diff_rep_file1";
 	private static final String DIFF_REP_FILE2 = "diff_rep_file2";
-
-	private static final String COMPARISON_TYPE = "comparison_type";
-	private static final String SPEC_TO_PROPERTY = "spec_to_property";
-	private static final String SPEC_TO_SPEC = "spec_to_spec";
 	
 	private static final String CONST_VALUE_CONSTRAINT = "const_value_constraint";
 	private static final String CONST_VALUE_CONSTRAINT1 = "const_value_constraint1";
 	private static final String CONST_VALUE_CONSTRAINT2 = "const_value_constraint2";
+	
 	private static final String SEPARATOR_FILE = "separator_file";
 	private static final String SEPARATOR1_FILE = "separator1_file";
 	private static final String SEPARATOR2_FILE = "separator2_file";
-	private static final String SPEC_NAME = "spec_name";
-	private static final String SPEC1_NAME = "spec1_name";
-	private static final String SPEC2_NAME = "spec2_name";
-	
-	private static final String COMBINED_ERR_PRE_TLA = "combined_err_pre_tla";
-	private static final String COMBINED_ERR_POST_TLA = "combined_err_post_tla";
-	private static final String SPEC1_SAT_SPEC2_CFG = "spec1_sat_spec2_cfg";
-	private static final String SPEC2_SAT_SPEC1_CFG = "spec2_sat_spec1_cfg";
 	
 	private static final String DIFF_REP_STATES_EMPTY = "diff_rep_states_empty";
 	private static final String DIFF_REP_STATES1_EMPTY = "diff_rep_states1_empty";
 	private static final String DIFF_REP_STATES2_EMPTY = "diff_rep_states2_empty";
-	private static final String SPEC_IS_SAFE = "spec_is_safe";
-	private static final String SPEC1_IS_SAFE = "spec1_is_safe";
-	private static final String SPEC2_IS_SAFE = "spec2_is_safe";
 	
 	private static final String GROUP_NAMES = "group_names";
 	private static final String GROUP_NAMES1 = "group_names1";
@@ -51,10 +37,6 @@ public class RobustDiffRep {
 	private static final String SORTS_MAP_FILE = "sorts_map_file";
 	private static final String SORTS_MAP1_FILE = "sorts_map_file1";
 	private static final String SORTS_MAP2_FILE = "sorts_map_file2";
-	
-	private static final String DIFF_REP_STATE_FORMULA_ERROR = "diff_rep_state_formula_error";
-	private static final String MISSING_TYPEOK = "missing_typeok";
-	private static final String MISSING_BOTH_TYPEOKS = "missing_both_typeoks";
 
 	private static final String TRUE = "true";
 	private static final String FALSE = "false";
