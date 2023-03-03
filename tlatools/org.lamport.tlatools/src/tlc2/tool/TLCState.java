@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 
 import tla2sany.semantic.OpDeclNode;
 import tla2sany.semantic.SymbolNode;
+import tlc2.Utils;
 import tlc2.output.EC;
 import tlc2.value.IValue;
 import tlc2.value.IValueInputStream;
@@ -200,14 +201,14 @@ public abstract class TLCState implements Cloneable, Serializable {
 	
 	@Override
 	public int hashCode() {
-		return format(this).hashCode();
+		return Utils.normalizeStateString(this.toString()).hashCode();
 	}
 	
 	@Override
 	public boolean equals(Object other) {
 		if (other instanceof TLCState) {
 			TLCState o = (TLCState) other;
-			return format(this).equals(format(o));
+			return Utils.normalizeStateString(this.toString()).equals(Utils.normalizeStateString(o.toString()));
 		}
 		return false;
 	}
@@ -219,7 +220,8 @@ public abstract class TLCState implements Cloneable, Serializable {
     }
     
     private static String format(String s) {
-    	return stripLeadingAnd(spaceAfterAnd(stripNewline(s))).trim();
+    	return Utils.normalizeStateString(s);
+    	//return stripLeadingAnd(spaceAfterAnd(stripNewline(s))).trim();
     }
 
     private static String stripLeadingAnd(String s) {

@@ -33,8 +33,8 @@ import util.WrongInvocationException;
  *
  * The viewMap was added by Rajeev Joshi.
  */
-public final class TLCStateMut extends TLCState implements Cloneable, Serializable {
-  private IValue values[];
+public class TLCStateMut extends TLCState implements Cloneable, Serializable {
+  protected IValue values[];
   private static ITool mytool = null;
 
   /**
@@ -49,7 +49,7 @@ public final class TLCStateMut extends TLCState implements Cloneable, Serializab
    */
   private static IMVPerm[] perms = null;
 
-  private TLCStateMut(IValue[] vals) { this.values = vals; }
+  protected TLCStateMut(IValue[] vals) { this.values = vals; }
   
   public static void setVariables(OpDeclNode[] variables) 
   {
@@ -80,7 +80,7 @@ public final class TLCStateMut extends TLCState implements Cloneable, Serializab
   }
 
   //TODO equals without hashcode!
-  public final boolean equals(Object obj) {
+  public boolean equals(Object obj) {
     if (obj instanceof TLCStateMut) {
       TLCStateMut state = (TLCStateMut)obj;
       for (int i = 0; i < this.values.length; i++) {

@@ -10,17 +10,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import tlc2.TLC;
+import tlc2.Utils;
 import tlc2.tool.ExtKripke.Pair;
 
 import java.lang.StringBuilder;
 
 
 public class ExtKripke {
-    private Set<TLCState> initStates = new HashSet<TLCState>();
-    private Set<TLCState> allStates = new HashSet<TLCState>();
-    private Set<TLCState> badStates = new HashSet<TLCState>();
-    private Set<Pair<TLCState,TLCState>> delta = new HashSet<Pair<TLCState,TLCState>>();
-    private Map<Pair<TLCState,TLCState>, Action> deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>();
+    private Set<TLCState> initStates = new HashSet<>();
+    private Set<TLCState> allStates = new HashSet<>();
+    private Set<TLCState> badStates = new HashSet<>();
+    private Set<Pair<TLCState,TLCState>> delta = new HashSet<>();
+    private Map<Pair<TLCState,TLCState>, Action> deltaActions = new HashMap<>();
 
     public ExtKripke() {}
     
@@ -28,21 +30,41 @@ public class ExtKripke {
 
     // bad initial states are explicitly added (via addBadState()) in ModelChecker.java
     public void addInitState(TLCState s) {
-        allStates.add(s);
-        initStates.add(s);
+    	if (!(s instanceof TLCStateMut)) {
+    		throw new RuntimeException("Invalid state added");
+    	}
+    	TLCState sk = new TLCStateKripke((TLCStateMut) s);
+        allStates.add(sk);
+        initStates.add(sk);
     }
 
     public void addGoodState(TLCState s) {
-        allStates.add(s);
+    	if (!(s instanceof TLCStateMut)) {
+    		throw new RuntimeException("Invalid state added");
+    	}
+    	TLCState sk = new TLCStateKripke((TLCStateMut) s);
+        allStates.add(sk);
     }
 
     public void addBadState(TLCState s) {
-        allStates.add(s);
-        badStates.add(s);
+    	if (!(s instanceof TLCStateMut)) {
+    		throw new RuntimeException("Invalid state added");
+    	}
+    	TLCState sk = new TLCStateKripke((TLCStateMut) s);
+        allStates.add(sk);
+        badStates.add(sk);
     }
 
     public void addTransition(Action act, TLCState src, TLCState dst) {
-    	Pair<TLCState,TLCState> transition = new Pair<TLCState,TLCState>(src, dst);
+    	if (!(src instanceof TLCStateMut)) {
+    		throw new RuntimeException("Invalid source state added");
+    	}
+    	if (!(dst instanceof TLCStateMut)) {
+    		throw new RuntimeException("Invalid dest state added");
+    	}
+    	TLCState srck = new TLCStateKripke((TLCStateMut) src);
+    	TLCState dstk = new TLCStateKripke((TLCStateMut) dst);
+    	Pair<TLCState,TLCState> transition = new Pair<TLCState,TLCState>(srck, dstk);
     	delta.add(transition);
     	deltaActions.put(transition, act);
     }
@@ -110,6 +132,79 @@ public class ExtKripke {
     	return inters;
     }
     
+    /*
+    public static Set<TLCState> tlcStateIntersection(Set<TLCState> s1, Set<TLCState> s2) {
+    	Map<String,TLCState> s1Map = new HashMap<>();
+    	for (TLCState s : s1) {
+    		s1Map.put(Utils.normalizeStateString(s.toString()), s);
+    	}
+    	Map<String,TLCState> s2Map = new HashMap<>();
+    	for (TLCState s : s2) {
+    		s2Map.put(Utils.normalizeStateString(s.toString()), s);
+    	}
+    	
+    	Set<TLCState> inters = new HashSet<>();
+    	for (String k : s1Map.keySet()) {
+    		if (s2Map.containsKey(k)) {
+    			TLCState state = s1Map.get(k);
+    			inters.add(state);
+    		}
+    	}
+    	for (String k : s2Map.keySet()) {
+    		if (s1Map.containsKey(k)) {
+    			TLCState state = s2Map.get(k);
+    			inters.add(state);
+    		}
+    	}
+    	return inters;
+    }
+    
+    public static Set<Pair<TLCState,TLCState>> deltaIntersection(Set<Pair<TLCState,TLCState>> s1, Set<Pair<TLCState,TLCState>> s2) {
+    	Map<String,Pair<TLCState,TLCState>> s1Map = new HashMap<>();
+    	for (Pair<TLCState,TLCState> s : s1) {
+    		s1Map.put(Utils.normalizeStateString(s.toString()), s);
+    	}
+    	Map<String,Pair<TLCState,TLCState>> s2Map = new HashMap<>();
+    	for (Pair<TLCState,TLCState> s : s2) {
+    		s2Map.put(Utils.normalizeStateString(s.toString()), s);
+    	}
+    	
+    	Set<Pair<TLCState,TLCState>> inters = new HashSet<>();
+    	for (String k : s1Map.keySet()) {
+    		if (s2Map.containsKey(k)) {
+    			Pair<TLCState,TLCState> state = s1Map.get(k);
+    			inters.add(state);
+    		}
+    	}
+    	for (String k : s2Map.keySet()) {
+    		if (s1Map.containsKey(k)) {
+    			Pair<TLCState,TLCState> state = s2Map.get(k);
+    			inters.add(state);
+    		}
+    	}
+    	return inters;
+    }
+    
+    public static Set<Pair<TLCState,TLCState>> tlcStateSetMinus(Set<Pair<TLCState,TLCState>> s1, Set<Pair<TLCState,TLCState>> s2) {
+    	Map<String,Pair<TLCState,TLCState>> s1Map = new HashMap<>();
+    	for (Pair<TLCState,TLCState> s : s1) {
+    		s1Map.put(Utils.normalizeStateString(s.toString()), s);
+    	}
+    	Map<String,Pair<TLCState,TLCState>> s2Map = new HashMap<>();
+    	for (Pair<TLCState,TLCState> s : s2) {
+    		s2Map.put(Utils.normalizeStateString(s.toString()), s);
+    	}
+    	
+    	Set<Pair<TLCState,TLCState>> setm = new HashSet<>();
+    	for (String k : s1Map.keySet()) {
+    		if (!s2Map.containsKey(k)) {
+    			Pair<TLCState,TLCState> state = s1Map.get(k);
+    			setm.add(state);
+    		}
+    	}
+    	return setm;
+    }*/
+    
     public static <T> Set<T> setMinus(Set<T> s1, Set<T> s2) {
     	Set<T> setmin = new HashSet<T>();
     	setmin.addAll(s1);
@@ -130,8 +225,37 @@ public class ExtKripke {
     	return calculateBoundary(BoundaryType.safety);
     }
     
-    private Set<TLCState> errorBoundary() {
+    public Set<TLCState> errorBoundary() {
     	return calculateBoundary(BoundaryType.error);
+    }
+    
+    // returns a map of (action name) -> (safety boundary for the action)
+    public Map<String, Set<String>> safetyBoundaryPerAction() {
+    	return boundaryPerAction(safetyBoundary());
+    }
+    
+    // returns a map of (action name) -> (error boundary for the action)
+    public Map<String, Set<String>> errorBoundaryPerAction() {
+    	return boundaryPerAction(errorBoundary());
+    }
+    
+    private Map<String, Set<String>> boundaryPerAction(final Set<TLCState> entireBoundary) {
+    	Map<String, Set<String>> groupedBoundaries = new HashMap<>();
+    	for (TLCState s : entireBoundary) {
+			final String boundaryState = Utils.normalizeStateString(s.toString());
+    		for (TLCState t : succ(s)) {
+    			Pair<TLCState,TLCState> transition = new Pair<>(s,t);
+    			if (this.delta.contains(transition) && this.badStates.contains(t)) {
+    				final Action act = this.deltaActions.get(transition);
+    				final String actName = act.getName().toString();
+    				if (!groupedBoundaries.containsKey(actName)) {
+    					groupedBoundaries.put(actName, new HashSet<>());
+    				}
+    				groupedBoundaries.get(actName).add(boundaryState);
+    			}
+    		}
+    	}
+    	return groupedBoundaries;
     }
     
     private Set<TLCState> succ(TLCState s) {
@@ -252,6 +376,27 @@ public class ExtKripke {
     }
     
     private static Set<TLCState> mutualReach(final ExtKripke m1, final ExtKripke m2) {
+    	System.out.println("m1 init:");
+    	for (TLCState s : m1.initStates) {
+    		System.out.println(s);
+    		//System.out.println(s.getClass());
+    	}
+    	System.out.println("m2 init:");
+    	for (TLCState s : m2.initStates) {
+    		System.out.println(s);
+    		//System.out.println(s.getClass());
+    	}
+    	System.out.println("m1 cap m2 init:");
+    	for (TLCState s : intersection(m1.initStates, m2.initStates)) {
+    		System.out.println(s);
+    	}
+    	System.out.println("m1 cup m2 init:");
+    	for (TLCState s : union(m1.initStates, m2.initStates)) {
+    		System.out.println(s);
+    	}
+    	
+    	
+    	
     	Set<TLCState> reach = new HashSet<TLCState>();
     	Set<TLCState> mutualInit = intersection(m1.initStates, m2.initStates);
     	Set<Pair<TLCState,TLCState>> mutualDelta = intersection(m1.delta, m2.delta);
@@ -475,6 +620,11 @@ public class ExtKripke {
         	}
         	return false;
         }
+        
+        @Override
+        public String toString() {
+        	return this.first.toString() + "_" + this.second.toString();
+        }
     }
     
     public static <A,B> Set<A> projectFirst(Set<Pair<A,B>> set) {
@@ -490,7 +640,8 @@ public class ExtKripke {
     }
     
     private static String format(String s) {
-    	return stripLeadingAnd(spaceAfterAnd(stripNewline(s))).trim();
+    	return Utils.normalizeStateString(s);
+    	//return stripLeadingAnd(spaceAfterAnd(stripNewline(s))).trim();
     }
 
     private static String stripLeadingAnd(String s) {
@@ -525,7 +676,7 @@ public class ExtKripke {
 		return sNew.toString();
 	}
     
-    private enum BoundaryType {
+    public enum BoundaryType {
     	safety, error
     }
 }
