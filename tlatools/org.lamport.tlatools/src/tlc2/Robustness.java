@@ -15,6 +15,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import tlc2.RobustDiffRep.SpecScope;
 import tlc2.tool.Action;
 import tlc2.tool.ExtKripke;
 import tlc2.tool.StateVarType;
@@ -29,9 +30,6 @@ public class Robustness {
 	private static final String SPEC_TO_PROPERTY = "spec_to_property";
 	private static final String SPEC_TO_SPEC = "spec_to_spec";
 	
-	private static final String DIFF_REP_FILE = "diff_rep_file";
-	private static final String DIFF_REP_FILE1 = "diff_rep_file1";
-	private static final String DIFF_REP_FILE2 = "diff_rep_file2";
 	private static final String CONST_VALUE_CONSTRAINT = "const_value_constraint";
 	private static final String CONST_VALUE_CONSTRAINT1 = "const_value_constraint1";
 	private static final String CONST_VALUE_CONSTRAINT2 = "const_value_constraint2";
@@ -63,22 +61,6 @@ public class Robustness {
 	private static final String DIFF_REP_STATE_FORMULA_ERROR = "diff_rep_state_formula_error";
 	private static final String MISSING_TYPEOK = "missing_typeok";
 	private static final String MISSING_BOTH_TYPEOKS = "missing_both_typeoks";
-	
-	private enum SpecScope {
-		Spec, Spec1, Spec2
-	}
-	
-	private static String keyForSpecScope(SpecScope scope, String key, String key1, String key2) {
-		switch (scope) {
-		case Spec:
-			return key;
-		case Spec1:
-			return key1;
-		case Spec2:
-			return key2;
-		}
-		throw new RuntimeException("Invalid SpecScope provided");
-	}
 	
 	
 	/*
@@ -162,7 +144,9 @@ public class Robustness {
     	ExtKripke kripke = tlc.getKripke();
     	Set<TLCState> safetyBoundary = kripke.safetyBoundary();
     	Set<String> safetyBoundaryStrs = Utils.stateSetToStringSet(safetyBoundary);
-    	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc, SpecScope.Spec, jsonOutput);
+    	
+    	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundaryStrs, jsonOutput);
+    	diffRep.writeBoundary(fileName);
     	createDiffStateRepFormula(safetyBoundaryStrs, tlaFile, tlc, tlc.getSpecName(), outputLoc, jsonOutput);
     	jsonOutput.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     }
@@ -203,15 +187,17 @@ public class Robustness {
     private static void computeDiffRepWrtOneSpec(final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
     		final TLC tlc1, final TLC tlc2, final String diffRepStatesFileName, final String refSpec, final String outputLoc,
     		final SpecScope specScope, Map<String,String> jsonOutput) {
-    	final String diffRepStateEmptyKey = keyForSpecScope(specScope, DIFF_REP_STATES_EMPTY, DIFF_REP_STATES1_EMPTY, DIFF_REP_STATES2_EMPTY);
-    	Set<Pair<TLCState,Action>> diffRep = ExtKripke.union(
+    	final String diffRepStateEmptyKey = RobustDiffRep.keyForSpecScope(specScope, DIFF_REP_STATES_EMPTY, DIFF_REP_STATES1_EMPTY, DIFF_REP_STATES2_EMPTY);
+    	Set<Pair<TLCState,Action>> diffRepSet = ExtKripke.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
-    	if (diffRep.size() > 0) {
+    	if (diffRepSet.size() > 0) {
         	// the two specs have overlapping error traces / state space so we compare them
-        	Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRep);
+        	Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRepSet);
         	Set<String> diffRepStateStrs = Utils.stateSetToStringSet(diffRepStates);
-        	writeDiffRepStatesToFile(diffRepStateStrs, diffRepStatesFileName, outputLoc, specScope, jsonOutput);
+        	
+        	RobustDiffRep diffRep = new RobustDiffRep(refSpec, specScope, outputLoc, diffRepStateStrs, jsonOutput);
+        	diffRep.writeBoundary(diffRepStatesFileName);
         	createDiffStateRepFormula(diffRepStateStrs, tlc1, tlc2, refSpec, outputLoc, specScope, jsonOutput);
         	jsonOutput.put(diffRepStateEmptyKey, FALSE);
     	}
@@ -219,23 +205,6 @@ public class Robustness {
     		//System.out.println("\\eta_2 - \\eta_1 = beh(M1_err) - beh(M2_err) = {}  (the diff rep is empty)");
         	jsonOutput.put(diffRepStateEmptyKey, TRUE);
     	}
-    }
-    
-    private static void writeDiffRepStatesToFile(final Set<String> diffRepStateStrs, final String name, final String outputLoc,
-    		final SpecScope specScope, Map<String,String> jsonOutput) {
-    	final String diffRepFileNameKey = keyForSpecScope(specScope, DIFF_REP_FILE, DIFF_REP_FILE1, DIFF_REP_FILE2);
-    	writeDiffRepStatesToFile(diffRepStateStrs, name, diffRepFileNameKey, outputLoc, jsonOutput);
-    }
-    
-    private static void writeDiffRepStatesToFile(final Set<String> diffRepStateStrs, final String name, final String diffRepFileNameKey,
-    		final String outputLoc, Map<String,String> jsonOutput) {
-    	StringBuilder builder = new StringBuilder();
-    	for (String diffState : diffRepStateStrs) {
-    		builder.append(diffState).append("\n");
-    	}
-    	final String file = outputLoc + name + ".txt";
-    	Utils.writeFile(file, builder.toString());
-    	jsonOutput.put(diffRepFileNameKey, file);
     }
     
     private static void createDiffStateRepFormula(final Set<String> diffRepStateStrs, final String tlaFile, final TLC tlc, final String refSpec,
@@ -300,13 +269,13 @@ public class Robustness {
     	final Map<String,String> valueToConstantMap = tlaValueToSeparatorConstant(nonConstValueTypes);
     	
     	if (constValueVars.size() > 0) {
-    		final String constValueConstraintKey = keyForSpecScope(specScope, CONST_VALUE_CONSTRAINT, CONST_VALUE_CONSTRAINT1, CONST_VALUE_CONSTRAINT2);
+    		final String constValueConstraintKey = RobustDiffRep.keyForSpecScope(specScope, CONST_VALUE_CONSTRAINT, CONST_VALUE_CONSTRAINT1, CONST_VALUE_CONSTRAINT2);
     		final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, jsonOutput);
             jsonOutput.put(constValueConstraintKey, constValueConstraint);
     	}
     	if (nonConstValueVars.size() > 0) {
-    		final String separatorFileKey = keyForSpecScope(specScope, SEPARATOR_FILE, SEPARATOR1_FILE, SEPARATOR2_FILE);
-    		final String sortsMapFileKey = keyForSpecScope(specScope, SORTS_MAP_FILE, SORTS_MAP1_FILE, SORTS_MAP2_FILE);
+    		final String separatorFileKey = RobustDiffRep.keyForSpecScope(specScope, SEPARATOR_FILE, SEPARATOR1_FILE, SEPARATOR2_FILE);
+    		final String sortsMapFileKey = RobustDiffRep.keyForSpecScope(specScope, SORTS_MAP_FILE, SORTS_MAP1_FILE, SORTS_MAP2_FILE);
         	final String separatorFile = buildAndWriteSeparatorFOL(posExamples, negExamples, varTypes, nonConstValueVars, nonConstValueTypes,
         			valueToConstantMap, refSpec, outputLoc);
         	final String sortsMapFile = writeSortsMap(nonConstValueTypes, refSpec, outputLoc);

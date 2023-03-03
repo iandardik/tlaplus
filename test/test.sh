@@ -8,17 +8,18 @@ test_prop() {
     tla_file="${1}.tla"
     actual_file="out/${1}_actual.txt"
     expected_file="expected/${1}.txt"
-    mkdir out
+    mkdir -p out
     python3 "${rob}" --outdir out --spec "${tla_file}" > "${actual_file}"
     diff=$(diff "${actual_file}" "${expected_file}")
+    rm -rf out/
     if [[ "${diff}" = "" ]]
     then
         echo "${1} pass"
     else
         echo "${1} failed with diff (actual v. expected):"
         echo "${diff}"
+        exit 0
     fi
-    rm -rf out/
 }
 
 test_cmp() {
@@ -26,17 +27,18 @@ test_cmp() {
     tla_file2="${2}.tla"
     actual_file="out/${1}_${2}_actual.txt"
     expected_file="expected/${1}_${2}.txt"
-    mkdir out
+    mkdir -p out
     python3 "${rob}" --outdir out --spec "${tla_file1}" --spec2 "${tla_file2}" --compare > "${actual_file}"
     diff=$(diff "${actual_file}" "${expected_file}")
+    rm -rf out/
     if [[ "${diff}" = "" ]]
     then
         echo "${1}_${2} pass"
     else
         echo "${1}_${2} failed with diff (actual v. expected):"
         echo "${diff}"
+        exit 0
     fi
-    rm -rf out/
 }
 
 test_suite() {
