@@ -51,22 +51,23 @@ public class Robustness {
 	 */
     public static void calc(String[] args) {
     	// TODO add functionality for compareSpecToEnvironment
-    	Map<String,String> jsonOutput = new HashMap<>();
+    	Map<String,String> jsonStrs = new HashMap<>();
+    	Map<String,List<String>> jsonLists = new HashMap<>();
     	if (args.length == 3) {
-    		compareSpecToProperty(args, jsonOutput);
+    		compareSpecToProperty(args, jsonStrs, jsonLists);
     	}
     	else if (args.length == 5) {
-    		compareSpecs(args, jsonOutput);
+    		compareSpecs(args, jsonStrs, jsonLists);
     	}
     	else {
     		System.out.println("usage: tlc-ian <output_loc> <spec1> <cfg1> [<spec2> <cfg2>]");
     	}
-    	System.out.println(Utils.asJson(jsonOutput));
+    	System.out.println(Utils.asJson(jsonStrs, jsonLists));
     	System.exit(0);
     }
     
     // M_err_rep: states that are in (M_err \cap P) but MAY leave P in one step
-    private static void compareSpecToProperty(String[] args, Map<String,String> jsonOutput) {
+    private static void compareSpecToProperty(String[] args, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	final String outputLoc = args[0] + "/";
     	final String tla = args[1];
     	final String cfg = args[2];
@@ -75,19 +76,19 @@ public class Robustness {
     	TLC tlc = new TLC();
     	TLC.runTLC(tla, cfg, tlc);
 
-    	jsonOutput.put(COMPARISON_TYPE, SPEC_TO_PROPERTY);
-    	jsonOutput.put(SPEC_NAME, tlc.getSpecName());
+    	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_PROPERTY);
+    	jsonStrs.put(SPEC_NAME, tlc.getSpecName());
     	
     	// compute the representation for beh(P) - \eta(spec,P)
-    	computePropertyDiffRep(tla, tlc, outputLoc, jsonOutput);
+    	computePropertyDiffRep(tla, tlc, outputLoc, jsonStrs, jsonLists);
     }
     
-    private static void compareSpecToEnvironment(String[] args, Map<String,String> jsonOutput) {
+    private static void compareSpecToEnvironment(String[] args, Map<String,String> jsonOutput, Map<String,List<String>> jsonLists) {
     	// TODO
     	// M_err_rep: states that are in (M_err \cap E) but MAY leave E in one step
     }
     
-    private static void compareSpecs(String[] args, Map<String,String> jsonOutput) {
+    private static void compareSpecs(String[] args, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	final String outputLoc = args[0] + "/";
     	final String tla1 = args[1];
     	final String cfg1 = args[2];
@@ -101,34 +102,34 @@ public class Robustness {
     	TLC.runTLC(tla1, cfg1, tlc1);
     	TLC.runTLC(tla2, cfg2, tlc2);
     	
-    	jsonOutput.put(COMPARISON_TYPE, SPEC_TO_SPEC);
-    	jsonOutput.put(SPEC1_NAME, tlc1.getSpecName());
-    	jsonOutput.put(SPEC2_NAME, tlc2.getSpecName());
-    	jsonOutput.put(SPEC1_IS_SAFE, tlc1.getKripke().isSafe() ? TRUE : FALSE);
-    	jsonOutput.put(SPEC2_IS_SAFE, tlc2.getKripke().isSafe() ? TRUE : FALSE);
+    	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_SPEC);
+    	jsonStrs.put(SPEC1_NAME, tlc1.getSpecName());
+    	jsonStrs.put(SPEC2_NAME, tlc2.getSpecName());
+    	jsonStrs.put(SPEC1_IS_SAFE, tlc1.getKripke().isSafe() ? TRUE : FALSE);
+    	jsonStrs.put(SPEC2_IS_SAFE, tlc2.getKripke().isSafe() ? TRUE : FALSE);
     	
     	// create err pre/post TLA+ specs
-    	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonOutput);
-    	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonOutput);
+    	createErrPre(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonStrs);
+    	createErrPost(tlc1, tlc2, tla1, tla2, cfg1, cfg2, outputLoc, jsonStrs);
     	
     	// create the cfgs for comparing the pre/post specs
     	final String spec1SatSpec2Cfg = specSatConfig("Spec1", "Spec2", outputLoc);
     	final String spec2SatSpec1Cfg = specSatConfig("Spec2", "Spec1", outputLoc);
-    	jsonOutput.put(SPEC1_SAT_SPEC2_CFG, spec1SatSpec2Cfg);
-    	jsonOutput.put(SPEC2_SAT_SPEC1_CFG, spec2SatSpec1Cfg);
+    	jsonStrs.put(SPEC1_SAT_SPEC2_CFG, spec1SatSpec2Cfg);
+    	jsonStrs.put(SPEC2_SAT_SPEC1_CFG, spec2SatSpec1Cfg);
     	
     	// compute the representation for \eta(spec2,P) - \eta(spec1,P)
     	// and \eta(spec1,P) - \eta(spec2,P)
-    	computeComparisonDiffRep(tlc1, tlc2, outputLoc, jsonOutput);
+    	computeComparisonDiffRep(tlc1, tlc2, outputLoc, jsonStrs, jsonLists);
     }
     
-    private static void computePropertyDiffRep(final String tlaFile, final TLC tlc, final String outputLoc, Map<String,String> jsonOutput) {
+    private static void computePropertyDiffRep(final String tlaFile, final TLC tlc, final String outputLoc, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	final ExtKripke kripke = tlc.getKripke();
-    	jsonOutput.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
+    	jsonStrs.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     	
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
     	final Set<String> safetyBoundary = Utils.stateSetToStringSet(kripke.safetyBoundary());
-    	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, jsonOutput);
+    	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, jsonStrs, jsonLists);
     	
     	if (!kripke.isSafe()) {
         	final String fileName = "safety_boundary_representation";
@@ -142,12 +143,12 @@ public class Robustness {
             	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
         	}
         	else {
-            	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);
+            	jsonStrs.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);
         	}
     	}
     }
     
-    private static void computeComparisonDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc, Map<String,String> jsonOutput) {
+    private static void computeComparisonDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	final ExtKripke kripke1 = tlc1.getKripke();
     	final ExtKripke kripke2 = tlc2.getKripke();
     	final ExtKripke errPre1 = kripke1.createErrPre();
@@ -155,8 +156,8 @@ public class Robustness {
     	final ExtKripke errPost1 = kripke1.createErrPost();
     	final ExtKripke errPost2 = kripke2.createErrPost();
 
-    	jsonOutput.put(SPEC1_IS_SAFE, kripke1.isSafe() ? TRUE : FALSE);
-    	jsonOutput.put(SPEC2_IS_SAFE, kripke2.isSafe() ? TRUE : FALSE);
+    	jsonStrs.put(SPEC1_IS_SAFE, kripke1.isSafe() ? TRUE : FALSE);
+    	jsonStrs.put(SPEC2_IS_SAFE, kripke2.isSafe() ? TRUE : FALSE);
     	
     	if (!kripke1.isSafe() && !kripke2.isSafe()) {
     		// compute \eta1-\eta2 and \eta2-\eta1
@@ -164,15 +165,15 @@ public class Robustness {
     		final String spec2 = tlc2.getSpecName();
         	final String diffRepStatesFileName1 = "diff_rep_" + spec1;
         	final String diffRepStatesFileName2 = "diff_rep_" + spec2;
-    		computeComparisonDiffRepWrtOneSpec(errPre2, errPost2, errPre1, errPost1, tlc1, tlc2, diffRepStatesFileName1, spec1, outputLoc, SpecScope.Spec1, jsonOutput);
-    		computeComparisonDiffRepWrtOneSpec(errPre1, errPost1, errPre2, errPost2, tlc2, tlc1, diffRepStatesFileName2, spec2, outputLoc, SpecScope.Spec2, jsonOutput);
+    		computeComparisonDiffRepWrtOneSpec(errPre2, errPost2, errPre1, errPost1, tlc1, tlc2, diffRepStatesFileName1, spec1, outputLoc, SpecScope.Spec1, jsonStrs, jsonLists);
+    		computeComparisonDiffRepWrtOneSpec(errPre1, errPost1, errPre2, errPost2, tlc2, tlc1, diffRepStatesFileName2, spec2, outputLoc, SpecScope.Spec2, jsonStrs, jsonLists);
     	}
     }
 
 	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
     private static void computeComparisonDiffRepWrtOneSpec(final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
     		final TLC tlc1, final TLC tlc2, final String diffRepStatesFileName, final String refSpec, final String outputLoc,
-    		final SpecScope specScope, Map<String,String> jsonOutput) {
+    		final SpecScope specScope, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	final Set<Pair<TLCState,Action>> diffRepSet = ExtKripke.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
@@ -180,7 +181,7 @@ public class Robustness {
     	final Set<String> diffRepStates = Utils.stateSetToStringSet(diffRepTlcStates);
 
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
-    	RobustDiffRep diffRep = new RobustDiffRep(refSpec, specScope, outputLoc, diffRepStates, jsonOutput);
+    	RobustDiffRep diffRep = new RobustDiffRep(refSpec, specScope, outputLoc, diffRepStates, jsonStrs, jsonLists);
     	
     	if (diffRepSet.size() > 0) {
         	// the two specs have overlapping error traces / state space so we compare them
@@ -195,7 +196,7 @@ public class Robustness {
             	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
         	}
         	else {
-            	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_BOTH_TYPEOKS);
+            	jsonStrs.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_BOTH_TYPEOKS);
         	}
     	}
     }

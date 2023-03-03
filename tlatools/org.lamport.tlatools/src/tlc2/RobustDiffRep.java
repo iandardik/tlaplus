@@ -76,13 +76,16 @@ public class RobustDiffRep {
 	private final String outputLocation;
 	private final Set<String> safetyBoundary;
 	private Map<String, String> jsonStrs;
+	private Map<String, List<String>> jsonLists;
 	
-	public RobustDiffRep(String specName, SpecScope scope, String outputLoc, Set<String> safetyBoundary, Map<String,String> jsonStrs) {
+	public RobustDiffRep(String specName, SpecScope scope, String outputLoc, Set<String> safetyBoundary,
+			Map<String,String> jsonStrs, Map<String, List<String>> jsonLists) {
 		this.specName = specName;
 		this.specScope = scope;
 		this.safetyBoundary = safetyBoundary;
 		this.outputLocation = outputLoc;
 		this.jsonStrs = jsonStrs;
+		this.jsonLists = jsonLists;
 
     	final String diffRepEmptyKey = RobustDiffRep.keyForSpecScope(specScope, DIFF_REP_STATES_EMPTY, DIFF_REP_STATES1_EMPTY, DIFF_REP_STATES2_EMPTY);
     	this.jsonStrs.put(diffRepEmptyKey, this.safetyBoundary.size() > 0 ? FALSE : TRUE);

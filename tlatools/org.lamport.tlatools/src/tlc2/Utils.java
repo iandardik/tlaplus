@@ -20,6 +20,8 @@ import tlc2.tool.ExtKripke.Pair;
 public class Utils {
 	private static final String QUOTE = "\"";
 	private static final String COLON = ":";
+	private static final String LSQBRACE = "[";
+	private static final String RSQBRACE = "]";
 
     
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {
@@ -226,16 +228,47 @@ public class Utils {
     	return lines;
     }
 	
-    public static String asJson(Map<String,String> output) {
+    public static String asJson(Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
+    	final String strs = asJsonStrs(jsonStrs);
+    	final String lists = asJsonLists(jsonLists);
+    	if (strs.isEmpty() && lists.isEmpty()) {
+    		return "{}";
+    	}
+    	else if (strs.isEmpty()) {
+        	return "{" + lists + "}";
+    	}
+    	else if (lists.isEmpty()) {
+        	return "{" + strs + "}";
+    	}
+    	else {
+        	return "{" + strs + "," + lists + "}";
+    	}
+    }
+	
+    private static String asJsonStrs(Map<String,String> output) {
     	List<String> fields = new ArrayList<>();
     	for (String key : output.keySet()) {
-    		String value = output.get(key);
+    		final String value = output.get(key);
         	StringBuilder builder = new StringBuilder();
     		builder.append(QUOTE).append(key).append(QUOTE).append(COLON)
     			.append(QUOTE).append(value).append(QUOTE);
     		fields.add(builder.toString());
     	}
     	final String fieldsStr = String.join(",", fields);
-    	return "{" + fieldsStr + "}";
+    	return fieldsStr;
+    }
+    
+    private static String asJsonLists(Map<String,List<String>> output) {
+    	List<String> fields = new ArrayList<>();
+    	for (String key : output.keySet()) {
+    		final List<String> value = output.get(key);
+    		final String flatValue = "\"" + String.join("\",\"", value) + "\"";
+        	StringBuilder builder = new StringBuilder();
+    		builder.append(QUOTE).append(key).append(QUOTE).append(COLON)
+    			.append(LSQBRACE).append(flatValue).append(RSQBRACE);
+    		fields.add(builder.toString());
+    	}
+    	final String fieldsStr = String.join(",", fields);
+    	return fieldsStr;
     }
 }
