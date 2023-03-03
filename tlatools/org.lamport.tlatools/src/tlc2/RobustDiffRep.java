@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import tlc2.RobustDiffRep.SpecScope;
 import tlc2.tool.ExtKripke;
 import tlc2.tool.StateVarType;
 import tlc2.tool.TLCState;
@@ -84,6 +83,9 @@ public class RobustDiffRep {
 		this.safetyBoundary = safetyBoundary;
 		this.outputLocation = outputLoc;
 		this.jsonStrs = jsonStrs;
+
+    	final String diffRepEmptyKey = RobustDiffRep.keyForSpecScope(specScope, DIFF_REP_STATES_EMPTY, DIFF_REP_STATES1_EMPTY, DIFF_REP_STATES2_EMPTY);
+    	this.jsonStrs.put(diffRepEmptyKey, this.safetyBoundary.size() > 0 ? FALSE : TRUE);
 	}
 	
 	public void writeBoundary(final String fileName) {
