@@ -1,0 +1,5 @@
+TLA+ Module: CoffeeTeaSmall
+Safety boundary representation: out/safety_boundary_representation.txt
+Safety boundary rep formula (with sort definitions):
+/\ brewed = {}
+/\ temp = 70

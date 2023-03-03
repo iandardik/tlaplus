@@ -1,0 +1,1 @@
+SecureVoting is robust against ANY behavior or environment, and is therefore strictly more robust than VotingEOCannotCfm.

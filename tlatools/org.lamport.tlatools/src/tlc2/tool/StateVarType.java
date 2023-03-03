@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import tlc2.Robustness;
 import tlc2.TLC;
 import tlc2.tool.ExtKripke.Pair;
 
@@ -73,7 +74,7 @@ public class StateVarType {
     	// determine the domain for each state var
     	Map<String, Set<String>> varDomain = new HashMap<>();
     	for (String state : stateSpace) {
-    		ArrayList<Pair<String,String>> stateAssignments = TLC.extractKeyValuePairsFromState(state);
+    		ArrayList<Pair<String,String>> stateAssignments = Robustness.extractKeyValuePairsFromState(state);
     		for (Pair<String,String> assg : stateAssignments) {
     			final String var = assg.first;
     			final String val = assg.second;

@@ -1,0 +1,7 @@
+TLA+ Module: VotingEOCannotCfm
+Safety boundary representation: out/safety_boundary_representation.txt
+Safety boundary rep formula (with sort definitions):
+/\ eoConfirm = "None"
+/\ booth = {"eofficial"}
+/\ state = "confirm"
+/\ eoChoice # "None"

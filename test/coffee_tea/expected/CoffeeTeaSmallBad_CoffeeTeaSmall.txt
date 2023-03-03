@@ -1,0 +1,9 @@
+CoffeeTeaSmall is strictly more robust than CoffeeTeaSmallBad
+
+the diff rep for eta(CoffeeTeaSmallBad) - eta(CoffeeTeaSmall) is empty
+
+TLA+ Module Comparison: eta(CoffeeTeaSmall) - eta(CoffeeTeaSmallBad)
+Safety boundary representation: out/diff_rep_CoffeeTeaSmall.txt
+Safety boundary rep formula (with sort definitions):
+/\ brewed = {}
+/\ temp = 70

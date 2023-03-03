@@ -1,0 +1,12 @@
+Voting is strictly more robust than VotingEOCannotCfm
+
+the diff rep for eta(VotingEOCannotCfm) - eta(Voting) is empty
+
+TLA+ Module Comparison: eta(Voting) - eta(VotingEOCannotCfm)
+Safety boundary representation: out/diff_rep_Voting.txt
+Safety boundary rep formula (with sort definitions):
+Sort1 == {"Kevin","David","None","Ian"}
+/\ eoConfirm = "None"
+/\ booth = {"eofficial"}
+/\ state = "confirm"
+/\ \A S \in Sort1 : (voterChoice # "None" /\ (voterChoice = S => eoChoice = S))

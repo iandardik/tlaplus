@@ -1,0 +1,8 @@
+TLA+ Module: Voting
+Safety boundary representation: out/safety_boundary_representation.txt
+Safety boundary rep formula (with sort definitions):
+Sort1 == {"Kevin","David","None","Ian"}
+/\ eoConfirm = "None"
+/\ booth = {"eofficial"}
+/\ state = "confirm"
+/\ \A S \in Sort1 : (eoChoice # "None" /\ (eoChoice # S \/ voterChoice # S))
