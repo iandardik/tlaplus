@@ -137,11 +137,10 @@ public class ExtKripke {
     
     // returns a map of (action name) -> (safety boundary for the action)
     public Map<String, Set<String>> safetyBoundaryPerAction() {
-    	//return boundaryPerAction(safetyBoundary());
-    	// TODO hack for now
-		Map<String, Set<String>> singleton = new HashMap<>();
-		singleton.put("All", Utils.stateSetToStringSet(safetyBoundary()));
-		return singleton;
+    	return boundaryPerAction(safetyBoundary());
+		//Map<String, Set<String>> singleton = new HashMap<>();
+		//singleton.put("All", Utils.stateSetToStringSet(safetyBoundary()));
+		//return singleton;
     }
     
     // returns a map of (action name) -> (error boundary for the action)

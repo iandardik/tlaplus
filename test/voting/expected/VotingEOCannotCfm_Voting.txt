@@ -6,8 +6,8 @@ the diff rep for eta(VotingEOCannotCfm) - eta(Voting) is empty
 Robustness comparison: eta(Voting) - eta(VotingEOCannotCfm)
 Diff rep grouped by action:
 
-All:
-Safety boundary representation: out/Voting_All_diff_rep.txt
+Confirm:
+Safety boundary representation: out/Voting_Confirm_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 Sort1 == {"Kevin","David","None","Ian"}
 /\ eoConfirm = "None"

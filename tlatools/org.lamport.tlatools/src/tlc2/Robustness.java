@@ -17,7 +17,7 @@ import tlc2.tool.impl.FastTool;
 
 public class Robustness {
 
-	private static final boolean GROUP_DIFF_REP_BY_ACTION = false;
+	private static final boolean GROUP_DIFF_REP_BY_ACTION = true;
 	
 	private static final String COMPARISON_TYPE = "comparison_type";
 	private static final String SPEC_TO_PROPERTY = "spec_to_property";

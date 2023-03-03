@@ -6,8 +6,14 @@ the diff rep for eta(CoffeeTeaSmallBad) - eta(CoffeeTeaSmall) is empty
 Robustness comparison: eta(CoffeeTeaSmall) - eta(CoffeeTeaSmallBad)
 Diff rep grouped by action:
 
-All:
-Safety boundary representation: out/CoffeeTeaSmall_All_diff_rep.txt
+BrewTea:
+Safety boundary representation: out/CoffeeTeaSmall_BrewTea_diff_rep.txt
+Safety boundary rep formula (with sort definitions):
+/\ brewed = {}
+/\ temp = 70
+
+BrewHotChocolate:
+Safety boundary representation: out/CoffeeTeaSmall_BrewHotChocolate_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 /\ brewed = {}
 /\ temp = 70
