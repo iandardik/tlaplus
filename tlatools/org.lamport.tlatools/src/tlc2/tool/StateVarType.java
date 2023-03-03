@@ -9,6 +9,7 @@ import java.util.Set;
 
 import tlc2.Robustness;
 import tlc2.TLC;
+import tlc2.Utils;
 import tlc2.tool.ExtKripke.Pair;
 
 public class StateVarType {
@@ -74,7 +75,7 @@ public class StateVarType {
     	// determine the domain for each state var
     	Map<String, Set<String>> varDomain = new HashMap<>();
     	for (String state : stateSpace) {
-    		ArrayList<Pair<String,String>> stateAssignments = Robustness.extractKeyValuePairsFromState(state);
+    		ArrayList<Pair<String,String>> stateAssignments = Utils.extractKeyValuePairsFromState(state);
     		for (Pair<String,String> assg : stateAssignments) {
     			final String var = assg.first;
     			final String val = assg.second;

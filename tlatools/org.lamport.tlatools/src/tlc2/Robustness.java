@@ -96,7 +96,7 @@ public class Robustness {
     	else {
     		System.out.println("usage: tlc-ian <output_loc> <spec1> <cfg1> [<spec2> <cfg2>]");
     	}
-    	System.out.println(asJson(jsonOutput));
+    	System.out.println(Utils.asJson(jsonOutput));
     	System.exit(0);
     }
     
@@ -161,7 +161,7 @@ public class Robustness {
     	final String fileName = "safety_boundary_representation";
     	ExtKripke kripke = tlc.getKripke();
     	Set<TLCState> safetyBoundary = kripke.safetyBoundary();
-    	Set<String> safetyBoundaryStrs = stateSetToStringSet(safetyBoundary);
+    	Set<String> safetyBoundaryStrs = Utils.stateSetToStringSet(safetyBoundary);
     	writeDiffRepStatesToFile(safetyBoundaryStrs, fileName, outputLoc, SpecScope.Spec, jsonOutput);
     	createDiffStateRepFormula(safetyBoundaryStrs, tlaFile, tlc, tlc.getSpecName(), outputLoc, jsonOutput);
     	jsonOutput.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
@@ -210,7 +210,7 @@ public class Robustness {
     	if (diffRep.size() > 0) {
         	// the two specs have overlapping error traces / state space so we compare them
         	Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRep);
-        	Set<String> diffRepStateStrs = stateSetToStringSet(diffRepStates);
+        	Set<String> diffRepStateStrs = Utils.stateSetToStringSet(diffRepStates);
         	writeDiffRepStatesToFile(diffRepStateStrs, diffRepStatesFileName, outputLoc, specScope, jsonOutput);
         	createDiffStateRepFormula(diffRepStateStrs, tlc1, tlc2, refSpec, outputLoc, specScope, jsonOutput);
         	jsonOutput.put(diffRepStateEmptyKey, FALSE);
@@ -234,7 +234,7 @@ public class Robustness {
     		builder.append(diffState).append("\n");
     	}
     	final String file = outputLoc + name + ".txt";
-    	writeFile(file, builder.toString());
+    	Utils.writeFile(file, builder.toString());
     	jsonOutput.put(diffRepFileNameKey, file);
     }
     
@@ -274,7 +274,7 @@ public class Robustness {
     		final String outputLoc, final SpecScope specScope, Map<String,String> jsonOutput) {
     	final ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
     	final Set<TLCState> stateSpace = stateSpaceKripke.reach();
-    	final Set<String> stateSpaceStrs = stateSetToStringSet(stateSpace);
+    	final Set<String> stateSpaceStrs = Utils.stateSetToStringSet(stateSpace);
 
     	// diffRepStateStrs is the set of positive examples
     	// notDiffStateStrs is the set of negative examples
@@ -320,14 +320,14 @@ public class Robustness {
     	for (StateVarType type : nonConstValueTypes) {
     		final String name = "\"" + type.getName() + "\"";
     		final String domain = "{" + String.join(",", type.getDomain()) + "}";
-    		final String mapping = name + ":\"" + stringEscape(domain) + "\"";
+    		final String mapping = name + ":\"" + Utils.stringEscape(domain) + "\"";
     		mappings.add(mapping);
     	}
     	final String map = "{" + String.join(",", mappings) + "}";
     	
     	final String sortsMapFile = specName + "_sorts_map.json";
     	final String path = outputLoc + sortsMapFile;
-        writeFile(path, map);
+    	Utils.writeFile(path, map);
         return path;
     }
     
@@ -387,7 +387,7 @@ public class Robustness {
     	
     	final String separatorFile = specName + ".fol";
     	final String path = outputLoc + separatorFile;
-        writeFile(path, builder.toString());
+    	Utils.writeFile(path, builder.toString());
         return path;
     }
 
@@ -399,7 +399,7 @@ public class Robustness {
         	constraints.add(constraint);
         }
         final String constValueConstraint = String.join(", ", constraints);
-        return stringEscape(constValueConstraint);
+        return Utils.stringEscape(constValueConstraint);
     }
     
     private static void determineConstAndNonConstVars(final Map<String, StateVarType> diffStateVarDomains, final Map<String, StateVarType> varTypes,
@@ -439,7 +439,7 @@ public class Robustness {
     
     private static String toSeparatorModelString(final String tlaState, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
     	ArrayList<String> separatorConjuncts = new ArrayList<>();
-    	ArrayList<Pair<String,String>> stateAssignments = extractKeyValuePairsFromState(tlaState);
+    	ArrayList<Pair<String,String>> stateAssignments = Utils.extractKeyValuePairsFromState(tlaState);
     	for (Pair<String,String> assg : stateAssignments) {
     		final String var = assg.first;
     		if (nonConstValueVars.contains(var)) {
@@ -471,45 +471,6 @@ public class Robustness {
     			.replaceAll("[{]", "Lp_pL")
     			.replaceAll("[}]", "Rp_pR");
     }
-    
-    public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {
-    	ArrayList<Pair<String,String>> kvPairs = new ArrayList<>();
-    	String[] conjuncts = tlaState.split(Pattern.quote("/\\"));
-    	for (int i = 0; i < conjuncts.length; ++i) {
-    		final String tlaConjunct = conjuncts[i];
-    		final Pair<String,String> kvPair = extractKeyValuePairFromAssignment(tlaConjunct);
-    		kvPairs.add(kvPair);
-    	}
-    	return kvPairs;
-    }
-    
-    private static Pair<String, String> extractKeyValuePairFromAssignment(String assg) {
-    	String[] kvp = assg.split("=");
-		assert(kvp.length == 2);
-		final String key = kvp[0].trim();
-		final String val = kvp[1].trim();
-		return new Pair<>(key,val);
-    }
-    
-    private static Set<String> stateSetToStringSet(Set<TLCState> src) {
-    	Set<String> dst = new HashSet<String>();
-    	for (TLCState s : src) {
-    		final String state = normalizeStateString(s.toString());
-    		dst.add(state);
-    	}
-    	return dst;
-    }
-    
-    private static String normalizeStateString(String s) {
-		//String[] conjuncts = s.replace('\n', ' ').trim().split(Pattern.quote("\\s*/\\\\s*"));
-    	String[] conjuncts = s.split(Pattern.quote("\n"));
-    	for (int i = 0; i < conjuncts.length; ++i) {
-    		final String orig = conjuncts[i];
-    		conjuncts[i] = orig.replaceAll(Pattern.quote("/\\"), "").trim();
-    	}
-		Arrays.sort(conjuncts);
-		return String.join(" /\\ ", conjuncts);
-	}
 	
     private static void createErrPre(final TLC tlc1, final TLC tlc2, final String tla1, final String tla2, final String cfg1, final String cfg2,
     		final String outputLoc, Map<String,String> jsonOutput) {
@@ -560,7 +521,7 @@ public class Robustness {
         builder.append("SPECIFICATION ").append(spec1).append("\n");
         builder.append("PROPERTY ").append(spec2);
         final String file = outputLoc + spec1 + "Sat" + spec2 + ".cfg";
-        writeFile(file, builder.toString());
+        Utils.writeFile(file, builder.toString());
         return file;
     }
     
@@ -570,17 +531,17 @@ public class Robustness {
         final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
         final String endModule = "=============================================================================";
         
-        ArrayList<String> varNameList1 = toArrayList(vars1);
-        ArrayList<String> varNameList2 = toArrayList(vars2);
+        ArrayList<String> varNameList1 = Utils.toArrayList(vars1);
+        ArrayList<String> varNameList2 = Utils.toArrayList(vars2);
         
         vars1.addAll(vars2);
-        ArrayList<String> combineVarNameList = toArrayList(vars1);
+        ArrayList<String> combineVarNameList = Utils.toArrayList(vars1);
         
         final String varList = String.join(", ", combineVarNameList);
         final String varsDecl = "VARIABLES " + varList;
         
-        final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + instanceWithList(varNameList1);
-        final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + instanceWithList(varNameList2);
+        final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + Utils.instanceWithList(varNameList1);
+        final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + Utils.instanceWithList(varNameList2);
         final String spec1Def = "Spec1 == S1!Spec";
         final String spec2Def = "Spec2 == S2!Spec";
 
@@ -598,7 +559,7 @@ public class Robustness {
         builder.append("\n");
         
         final String name = outputLoc + specName + ".tla";
-        writeFile(name, builder.toString());
+        Utils.writeFile(name, builder.toString());
         
         return name;
     }
@@ -623,12 +584,12 @@ public class Robustness {
         final String endModule = "=============================================================================";
         
         FastTool ft = (FastTool) tlc.tool;
-        ArrayList<String> varNameList = toArrayList(ft.getVarNames());
+        ArrayList<String> varNameList = Utils.toArrayList(ft.getVarNames());
         
         final String varList = String.join(", ", varNameList);
         final String varsDecl = "VARIABLES " + varList;
         
-        final String specDef = "S1 == INSTANCE " + tlc.getSpecName() + " WITH " + instanceWithList(varNameList);
+        final String specDef = "S1 == INSTANCE " + tlc.getSpecName() + " WITH " + Utils.instanceWithList(varNameList);
         final String typeOKDef = "TypeOK == S1!TypeOK";
         
         StringBuilder builder = new StringBuilder();
@@ -641,7 +602,7 @@ public class Robustness {
         builder.append("\n");
         
         final String file = outputLoc + specName + ".tla";
-        writeFile(file, builder.toString());
+        Utils.writeFile(file, builder.toString());
         
         return file;
     }
@@ -652,8 +613,8 @@ public class Robustness {
         
         FastTool ft1 = (FastTool) tlc1.tool;
         FastTool ft2 = (FastTool) tlc2.tool;
-        ArrayList<String> varNameList1 = toArrayList(ft1.getVarNames());
-        ArrayList<String> varNameList2 = toArrayList(ft2.getVarNames());
+        ArrayList<String> varNameList1 = Utils.toArrayList(ft1.getVarNames());
+        ArrayList<String> varNameList2 = Utils.toArrayList(ft2.getVarNames());
         Set<String> combineVarNames = new HashSet<String>();
         combineVarNames.addAll(varNameList1);
         combineVarNames.addAll(varNameList2);
@@ -663,8 +624,8 @@ public class Robustness {
         
         final String specName1 = tlc1.getSpecName();
         final String specName2 = tlc2.getSpecName();
-        final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + instanceWithList(varNameList1);
-        final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + instanceWithList(varNameList2);
+        final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + Utils.instanceWithList(varNameList1);
+        final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + Utils.instanceWithList(varNameList2);
         final String typeOKDef = "TypeOK == S1!TypeOK /\\ S2!TypeOK";
         
         StringBuilder builder = new StringBuilder();
@@ -678,7 +639,7 @@ public class Robustness {
         builder.append("\n");
         
         final String file = outputLoc + specName + ".tla";
-        writeFile(file, builder.toString());
+        Utils.writeFile(file, builder.toString());
         
         return file;
     }
@@ -688,7 +649,7 @@ public class Robustness {
         builder.append("SPECIFICATION TypeOK");
         
         final String file = outputLoc + specName + ".cfg";
-        writeFile(file, builder.toString());
+        Utils.writeFile(file, builder.toString());
         
         return file;
     }
@@ -705,8 +666,8 @@ public class Robustness {
         final List<String> moduleWhiteList =
         		Arrays.asList("Bags", "FiniteSets", "Functions", "Integers", "Json", "Naturals",
         				"NaturalsInduction", "RealTime", "Sequences", "SequencesExt", "TLC", "TLCExt");
-        ArrayList<String> moduleNameList = filterArrayWhiteList(moduleWhiteList, ft.getModuleNames());
-        ArrayList<String> varNameList = toArrayList(ft.getVarNames());
+        ArrayList<String> moduleNameList = Utils.filterArrayWhiteList(moduleWhiteList, ft.getModuleNames());
+        ArrayList<String> varNameList = Utils.toArrayList(ft.getVarNames());
         vars.addAll(varNameList);
 
         final String moduleList = String.join(", ", moduleNameList);
@@ -730,7 +691,7 @@ public class Robustness {
 
         final String fileName = specName + ".tla";
         final String file = outputLoc + fileName;
-        writeFile(file, builder.toString());
+        Utils.writeFile(file, builder.toString());
         
         return specName;
     }
@@ -739,191 +700,9 @@ public class Robustness {
         Action[] fairnessConditions = tlc.tool.getTemporals();
         List<String> fairnessConditionStrs = new ArrayList<>();
         for (Action condition : fairnessConditions) {
-        	final String condStr = extractSyntaxFromSource(tla, condition.getLocation());
+        	final String condStr = Utils.extractSyntaxFromSource(tla, condition.getLocation());
         	fairnessConditionStrs.add(condStr);
         }
         return String.join(" /\\ ", fairnessConditionStrs);
     }
-    
-    private static String instanceWithList(ArrayList<String> vars) {
-    	ArrayList<String> varArrowList = new ArrayList<String>();
-    	for (String var : vars) {
-    		final String arrow = var + " <- " + var;
-    		varArrowList.add(arrow);
-    	}
-    	return String.join(", ", varArrowList);
-    }
-
-    private static <T> ArrayList<T> toArrayList(Set<T> src) {
-    	ArrayList<T> dst = new ArrayList<T>();
-    	for (T s : src) {
-    		dst.add(s);
-    	}
-    	return dst;
-    }
-
-    private static <T> ArrayList<T> toArrayList(T[] src) {
-    	ArrayList<T> dst = new ArrayList<T>();
-    	for (int i = 0; i < src.length; ++i) {
-    		dst.add(src[i]);
-    	}
-    	return dst;
-    }
-    
-    private static ArrayList<String> filterArrayBlackList(String filter, String[] arr) {
-    	ArrayList<String> filtered = new ArrayList<String>();
-    	for (int i = 0; i < arr.length; ++i) {
-    		String e = arr[i];
-    		if (!filter.equals(e)) {
-    			filtered.add(e);
-    		}
-    	}
-    	return filtered;
-    }
-    
-    private static ArrayList<String> filterArrayWhiteList(List<String> filter, String[] arr) {
-    	ArrayList<String> filtered = new ArrayList<String>();
-    	for (int i = 0; i < arr.length; ++i) {
-    		String e = arr[i];
-    		if (filter.contains(e)) {
-    			filtered.add(e);
-    		}
-    	}
-    	return filtered;
-    }
-    
-    private static int findFirstLineOfSpec(ArrayList<String> lines) {
-    	for (int i = 0; i < lines.size(); ++i) {
-    		String line = lines.get(i);
-    		if (line.length() >= 3 && line.substring(0,3).equals("---")) {
-    			return i;
-    		}
-    	}
-    	throw new RuntimeException("Unable to find the last line in the TLA+ spec!");
-    }
-    
-    private static int findLastLineOfSpec(ArrayList<String> lines) {
-    	for (int i = lines.size()-1; i >= 0; --i) {
-    		String line = lines.get(i);
-    		if (line.length() >= 3 && line.substring(0,3).equals("===")) {
-    			return i;
-    		}
-    	}
-    	throw new RuntimeException("Unable to find the last line in the TLA+ spec!");
-    }
-    
-    private static void printStringArr(ArrayList<String> arr) {
-    	for (String s : arr) {
-    		System.out.println(s);
-    	}
-    }
-    
-    // thanks https://stackoverflow.com/questions/2406121/how-do-i-escape-a-string-in-java
-    private static String stringEscape(String s){
-	  return s.replace("\\", "\\\\")
-	          .replace("\t", "\\t")
-	          .replace("\b", "\\b")
-	          .replace("\n", "\\n")
-	          .replace("\r", "\\r")
-	          .replace("\f", "\\f")
-	          .replace("\'", "\\'")
-	          .replace("\"", "\\\"");
-	}
-    
-    private static String extractSyntaxFromSource(final String tla, final String loc) {
-    	String[] parts = loc.replaceAll(",", "").split(" ");
-    	int startLine = -1;
-    	int startCol = -1;
-    	int endLine = -1;
-    	int endCol = -1;
-    	for (int i = 0; i < parts.length-1; ++i) {
-    		final String part = parts[i];
-			final String strLineOrColNum = parts[i+1];
-    		if (part.equals("line") && startLine < 0) {
-    			startLine = Integer.parseInt(strLineOrColNum) - 1;
-    		}
-    		else if (part.equals("line") && startLine >= 0) {
-    			endLine = Integer.parseInt(strLineOrColNum) - 1;
-    		}
-    		else if (part.equals("col") && startCol < 0) {
-    			startCol = Integer.parseInt(strLineOrColNum) - 1;
-    		}
-    		else if (part.equals("col") && startCol >= 0) {
-    			endCol = Integer.parseInt(strLineOrColNum);
-    		}
-    	}
-    	assert(startLine >= 0);
-    	assert(startCol >= 0);
-    	assert(endLine >= 0);
-    	assert(endCol >= 0);
-    	assert(startLine <= endLine);
-
-    	ArrayList<String> tlaSource = fileContents(tla);
-    	// single line extraction
-    	if (startLine == endLine) {
-    		final String line = tlaSource.get(startLine);
-    		final String syntax = line.substring(startCol, endCol);
-    		return syntax;
-    	}
-    	// multi-line extraction
-    	else {
-        	StringBuilder builder = new StringBuilder();
-        	for (int i = startLine; i <= endLine; ++i) {
-        		final String line = tlaSource.get(i);
-        		if (i == startLine) {
-        			builder.append(line.substring(startCol));
-        		}
-        		else if (i == endLine) {
-        			builder.append(" ").append(line.substring(0, endCol));
-        		}
-        		else {
-        			builder.append(" ").append(line);
-        		}
-        	}
-        	return builder.toString();
-    	}
-    }
-    
-    private static void writeFile(String file, String contents) {
-    	try {
-    		BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-    	    writer.write(contents);
-    	    writer.close();
-    	}
-    	catch (IOException e) {
-    		throw new RuntimeException("Failed to write to file: " + file + "!");
-    	}
-    }
-    
-    private static ArrayList<String> fileContents(String loc) {
-    	ArrayList<String> lines = new ArrayList<String>();
-    	try {
-	      Scanner scan = new Scanner(new File(loc));
-	      while (scan.hasNextLine()) {
-	        lines.add(scan.nextLine());
-	      }
-	      scan.close();
-	    } catch (FileNotFoundException e) {
-	      System.out.println("The file " + loc + " does not exist!");
-	      e.printStackTrace();
-	    }
-    	return lines;
-    }
-
-	private static final String QUOTE = "\"";
-	private static final String COLON = ":";
-	
-    private static String asJson(Map<String,String> output) {
-    	List<String> fields = new ArrayList<>();
-    	for (String key : output.keySet()) {
-    		String value = output.get(key);
-        	StringBuilder builder = new StringBuilder();
-    		builder.append(QUOTE).append(key).append(QUOTE).append(COLON)
-    			.append(QUOTE).append(value).append(QUOTE);
-    		fields.add(builder.toString());
-    	}
-    	final String fieldsStr = String.join(",", fields);
-    	return "{" + fieldsStr + "}";
-    }
-    
 }
