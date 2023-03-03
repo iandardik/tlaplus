@@ -134,8 +134,7 @@ public class Robustness {
     	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, safetyBoundaryByGroup, jsonStrs, jsonLists);
     	
     	if (!kripke.isSafe()) {
-        	final String fileName = "safety_boundary_representation";
-        	diffRep.writeBoundary(fileName);
+        	diffRep.writeBoundary();
         	
         	// a TypeOK is required to gather the info we need to create a sep.fol file
         	if (tlc.hasInvariant(TYPE_OK)) {
@@ -163,18 +162,16 @@ public class Robustness {
     	
     	if (!kripke1.isSafe() && !kripke2.isSafe()) {
     		// compute \eta1-\eta2 and \eta2-\eta1
-    		final String spec1 = tlc1.getSpecName();
-    		final String spec2 = tlc2.getSpecName();
-        	final String diffRepStatesFileName1 = "diff_rep_" + spec1;
-        	final String diffRepStatesFileName2 = "diff_rep_" + spec2;
-    		computeComparisonDiffRepWrtOneSpec(errPre2, errPost2, errPre1, errPost1, tlc1, tlc2, diffRepStatesFileName1, spec1, outputLoc, SpecScope.Spec1, jsonStrs, jsonLists);
-    		computeComparisonDiffRepWrtOneSpec(errPre1, errPost1, errPre2, errPost2, tlc2, tlc1, diffRepStatesFileName2, spec2, outputLoc, SpecScope.Spec2, jsonStrs, jsonLists);
+    		computeComparisonDiffRepWrtOneSpec(errPre2, errPost2, errPre1, errPost1, tlc1, tlc2, tlc1.getSpecName(),
+    				outputLoc, SpecScope.Spec1, jsonStrs, jsonLists);
+    		computeComparisonDiffRepWrtOneSpec(errPre1, errPost1, errPre2, errPost2, tlc2, tlc1, tlc2.getSpecName(),
+    				outputLoc, SpecScope.Spec2, jsonStrs, jsonLists);
     	}
     }
 
 	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
     private static void computeComparisonDiffRepWrtOneSpec(final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
-    		final TLC tlc1, final TLC tlc2, final String diffRepStatesFileName, final String refSpec, final String outputLoc,
+    		final TLC tlc1, final TLC tlc2, final String refSpec, final String outputLoc,
     		final SpecScope specScope, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	final Set<Pair<TLCState,Action>> diffRepSet = ExtKripke.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
@@ -188,7 +185,7 @@ public class Robustness {
     	
     	if (diffRepSet.size() > 0) {
         	// the two specs have overlapping error traces / state space so we compare them
-        	diffRep.writeBoundary(diffRepStatesFileName);
+        	diffRep.writeBoundary();
 
         	// a TypeOK is required to gather the info we need to create a sep.fol file
         	final boolean bothHaveTypeOK = tlc1.hasInvariant(TYPE_OK) && tlc2.hasInvariant(TYPE_OK);

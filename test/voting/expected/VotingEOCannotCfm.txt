@@ -1,5 +1,8 @@
 TLA+ Module: VotingEOCannotCfm
-Safety boundary representation: out/safety_boundary_representation.txt
+Diff rep grouped by action:
+
+All:
+Safety boundary representation: out/VotingEOCannotCfm_All_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 /\ eoConfirm = "None"
 /\ booth = {"eofficial"}

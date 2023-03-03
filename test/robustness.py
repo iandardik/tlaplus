@@ -119,18 +119,26 @@ def run_robustness(args):
     assert jsonResult['comparison_type'] == 'spec_to_property'
     assert jsonResult['spec_name'] == spec_name
 
+    print("TLA+ Module: " + spec_name)
+    print("Diff rep grouped by action:")
     spec_is_safe = jsonResult["spec_is_safe"]
     if spec_is_safe == "true":
         print("Spec is robust against ANY behavior or environment")
     else:
-        diff_rep_file = jsonResult['diff_rep_file']
-        sorts_map_file = jsonResult['sorts_map_file'] if 'sorts_map_file' in jsonResult else None
-        const_constr = const_constraint(jsonResult, 'const_value_constraint')
-        non_const_constr = non_const_constraint(jsonResult, outdir, 'separator_file')
-
-        print("TLA+ Module: " + spec_name)
-        print("Safety boundary representation: " + diff_rep_file)
-        print_constraint(const_constr, non_const_constr, sorts_map_file)
+        diff_rep_states_empty = jsonResult["diff_rep_states_empty"]
+        if diff_rep_states_empty == "true":
+            print("the diff rep for eta(" + spec_name + ") is empty")
+        else:
+            group_names = jsonResult['group_names']
+            for group in group_names:
+                diff_rep_file = jsonResult['diff_rep_file_' + group]
+                sorts_map_file = jsonResult['sorts_map_file_'+group] if ('sorts_map_file_'+group) in jsonResult else None
+                const_constr = const_constraint(jsonResult, 'const_value_constraint_' + group)
+                non_const_constr = non_const_constraint(jsonResult, outdir, 'separator_file_' + group)
+                print()
+                print(group + ":")
+                print("Safety boundary representation: " + diff_rep_file)
+                print_constraint(const_constr, non_const_constr, sorts_map_file)
 
 def run_env(args):
     print("Not supported yet")
@@ -170,6 +178,7 @@ def run_comparison(args):
         err1_satisfies_err2 = err_satisfaction(combined_err_pre_tla, combined_err_post_tla, spec1_sat_spec2_cfg, outdir)
         err2_satisfies_err1 = err_satisfaction(combined_err_pre_tla, combined_err_post_tla, spec2_sat_spec1_cfg, outdir)
 
+        print("TLA+ Module Comparison: " + spec1_name + " v. " + spec2_name)
         if err1_satisfies_err2 and err2_satisfies_err1:
             print("The specs are equally robust")
         elif err1_satisfies_err2:
@@ -180,30 +189,40 @@ def run_comparison(args):
             print("The robustness of the two specs are incomparable")
 
         # show \eta1-\eta2
-        print("")
+        print()
         diff_rep_states1_empty = jsonResult["diff_rep_states1_empty"]
         if diff_rep_states1_empty == "false":
-            diff_rep_file = jsonResult["diff_rep_file1"]
-            sorts_map_file = jsonResult['sorts_map_file1'] if 'sorts_map_file1' in jsonResult else None
-            const_constr = const_constraint(jsonResult, "const_value_constraint1")
-            non_const_constr = non_const_constraint(jsonResult, outdir, "separator1_file")
-            print("TLA+ Module Comparison: eta(" + spec1_name + ") - eta(" + spec2_name + ")")
-            print("Safety boundary representation: " + diff_rep_file)
-            print_constraint(const_constr, non_const_constr, sorts_map_file)
+            print("Robustness comparison: eta(" + spec1_name + ") - eta(" + spec2_name + ")")
+            print("Diff rep grouped by action:")
+            group_names = jsonResult['group_names1']
+            for group in group_names:
+                diff_rep_file = jsonResult["diff_rep_file1_" + group]
+                sorts_map_file = jsonResult['sorts_map_file1_'+group] if ('sorts_map_file1_'+group) in jsonResult else None
+                const_constr = const_constraint(jsonResult, "const_value_constraint1_" + group)
+                non_const_constr = non_const_constraint(jsonResult, outdir, "separator1_file_" + group)
+                print()
+                print(group + ":")
+                print("Safety boundary representation: " + diff_rep_file)
+                print_constraint(const_constr, non_const_constr, sorts_map_file)
         else:
             print("the diff rep for eta(" + spec1_name + ") - eta(" + spec2_name + ") is empty")
 
         # show \eta2-\eta1
-        print("")
+        print()
         diff_rep_states2_empty = jsonResult["diff_rep_states2_empty"]
         if diff_rep_states2_empty == "false":
-            diff_rep_file = jsonResult["diff_rep_file2"]
-            sorts_map_file = jsonResult['sorts_map_file2'] if 'sorts_map_file2' in jsonResult else None
-            const_constr = const_constraint(jsonResult, "const_value_constraint2")
-            non_const_constr = non_const_constraint(jsonResult, outdir, "separator2_file")
-            print("TLA+ Module Comparison: eta(" + spec2_name + ") - eta(" + spec1_name + ")")
-            print("Safety boundary representation: " + diff_rep_file)
-            print_constraint(const_constr, non_const_constr, sorts_map_file)
+            print("Robustness comparison: eta(" + spec2_name + ") - eta(" + spec1_name + ")")
+            print("Diff rep grouped by action:")
+            group_names = jsonResult['group_names2']
+            for group in group_names:
+                diff_rep_file = jsonResult["diff_rep_file2_" + group]
+                sorts_map_file = jsonResult['sorts_map_file2_'+group] if ('sorts_map_file2_'+group) in jsonResult else None
+                const_constr = const_constraint(jsonResult, "const_value_constraint2_" + group)
+                non_const_constr = non_const_constraint(jsonResult, outdir, "separator2_file_" + group)
+                print()
+                print(group + ":")
+                print("Safety boundary representation: " + diff_rep_file)
+                print_constraint(const_constr, non_const_constr, sorts_map_file)
         else:
             print("the diff rep for eta(" + spec2_name + ") - eta(" + spec1_name + ") is empty")
 

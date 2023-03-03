@@ -1,1 +1,3 @@
+TLA+ Module: SecureVoting
+Diff rep grouped by action:
 Spec is robust against ANY behavior or environment

@@ -43,8 +43,10 @@ public class RobustDiffRep {
 	private static final String SPEC_IS_SAFE = "spec_is_safe";
 	private static final String SPEC1_IS_SAFE = "spec1_is_safe";
 	private static final String SPEC2_IS_SAFE = "spec2_is_safe";
-	private static final String TRUE = "true";
-	private static final String FALSE = "false";
+	
+	private static final String GROUP_NAMES = "group_names";
+	private static final String GROUP_NAMES1 = "group_names1";
+	private static final String GROUP_NAMES2 = "group_names2";
 
 	private static final String SORTS_MAP_FILE = "sorts_map_file";
 	private static final String SORTS_MAP1_FILE = "sorts_map_file1";
@@ -53,6 +55,14 @@ public class RobustDiffRep {
 	private static final String DIFF_REP_STATE_FORMULA_ERROR = "diff_rep_state_formula_error";
 	private static final String MISSING_TYPEOK = "missing_typeok";
 	private static final String MISSING_BOTH_TYPEOKS = "missing_both_typeoks";
+
+	private static final String TRUE = "true";
+	private static final String FALSE = "false";
+	
+	private static final String NEW_LINE = "\n";
+	private static final String UNDERSCORE = "_";
+	private static final String DIFF_REP = "diff_rep";
+	private static final String DOT_TXT = ".txt";
 	
 	public enum SpecScope {
 		Spec, Spec1, Spec2
@@ -88,31 +98,35 @@ public class RobustDiffRep {
 		this.outputLocation = outputLoc;
 		this.jsonStrs = jsonStrs;
 		this.jsonLists = jsonLists;
+		
+    	final String groupNamesKey = RobustDiffRep.keyForSpecScope(specScope, GROUP_NAMES, GROUP_NAMES1, GROUP_NAMES2);
+    	this.jsonLists.put(groupNamesKey, new ArrayList<>(this.boundariesByGroup.keySet()));
 
     	final String diffRepEmptyKey = RobustDiffRep.keyForSpecScope(specScope, DIFF_REP_STATES_EMPTY, DIFF_REP_STATES1_EMPTY, DIFF_REP_STATES2_EMPTY);
     	this.jsonStrs.put(diffRepEmptyKey, this.safetyBoundary.size() > 0 ? FALSE : TRUE);
 	}
 	
-	public void writeBoundary(final String fileName) {
-    	final String diffRepFileNameKey = keyForSpecScope(specScope, DIFF_REP_FILE, DIFF_REP_FILE1, DIFF_REP_FILE2);
-    	StringBuilder builder = new StringBuilder();
-    	for (String diffState : this.safetyBoundary) {
-    		builder.append(diffState).append("\n");
-    	}
-    	final String file = this.outputLocation + fileName + ".txt";
-    	Utils.writeFile(file, builder.toString());
-    	this.jsonStrs.put(diffRepFileNameKey, file);
+	public void writeBoundary() {
+		final String fileKeyBase = keyForSpecScope(specScope, DIFF_REP_FILE, DIFF_REP_FILE1, DIFF_REP_FILE2);
+		for (final String groupName : this.boundariesByGroup.keySet()) {
+			final Set<String> group = this.boundariesByGroup.get(groupName);
+			final String fileName = this.specName + UNDERSCORE + groupName + UNDERSCORE + DIFF_REP + DOT_TXT;
+			final String filePath = this.outputLocation + fileName;
+			final String diffRepFileNameKey = fileKeyBase + UNDERSCORE + groupName;
+	    	final String output = String.join(NEW_LINE, group);
+	    	Utils.writeFile(filePath, output);
+	    	this.jsonStrs.put(diffRepFileNameKey, filePath);
+		}
 	}
 	
 	public void writeBoundaryFOLSeparatorFile(final TLC tlcTypeOK) {
-		createDiffStateRepFormula(this.safetyBoundary, tlcTypeOK, this.specName, this.outputLocation, this.specScope, this.jsonStrs);
+		for (final String groupName : this.boundariesByGroup.keySet()) {
+			final Set<String> group = this.boundariesByGroup.get(groupName);
+			createDiffStateRepFormula(group, tlcTypeOK, groupName);
+		}
 	}
 	
-	
-	/* Static helper methods */
-	
-	private static void createDiffStateRepFormula(final Set<String> posExamples, final TLC tlcTypeOK, final String refSpec,
-    		final String outputLoc, final SpecScope specScope, Map<String,String> jsonOutput) {
+	private void createDiffStateRepFormula(final Set<String> posExamples, final TLC tlcTypeOK, final String groupName) {
     	final ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
     	final Set<TLCState> stateSpace = stateSpaceKripke.reach();
     	final Set<String> stateSpaceStrs = Utils.stateSetToStringSet(stateSpace);
@@ -141,22 +155,28 @@ public class RobustDiffRep {
     	final Map<String,String> valueToConstantMap = tlaValueToSeparatorConstant(nonConstValueTypes);
     	
     	if (constValueVars.size() > 0) {
-    		final String constValueConstraintKey = RobustDiffRep.keyForSpecScope(specScope, CONST_VALUE_CONSTRAINT, CONST_VALUE_CONSTRAINT1, CONST_VALUE_CONSTRAINT2);
-    		final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, jsonOutput);
-            jsonOutput.put(constValueConstraintKey, constValueConstraint);
+    		final String constValueConstraintKeyBase = RobustDiffRep.keyForSpecScope(specScope, CONST_VALUE_CONSTRAINT, CONST_VALUE_CONSTRAINT1, CONST_VALUE_CONSTRAINT2);
+    		final String constValueConstraintKey = constValueConstraintKeyBase + UNDERSCORE + groupName;
+    		final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, this.jsonStrs);
+            this.jsonStrs.put(constValueConstraintKey, constValueConstraint);
     	}
     	if (nonConstValueVars.size() > 0) {
-    		final String separatorFileKey = RobustDiffRep.keyForSpecScope(specScope, SEPARATOR_FILE, SEPARATOR1_FILE, SEPARATOR2_FILE);
-    		final String sortsMapFileKey = RobustDiffRep.keyForSpecScope(specScope, SORTS_MAP_FILE, SORTS_MAP1_FILE, SORTS_MAP2_FILE);
+    		final String separatorFileKeyBase = RobustDiffRep.keyForSpecScope(specScope, SEPARATOR_FILE, SEPARATOR1_FILE, SEPARATOR2_FILE);
+    		final String sortsMapFileKeyBase = RobustDiffRep.keyForSpecScope(specScope, SORTS_MAP_FILE, SORTS_MAP1_FILE, SORTS_MAP2_FILE);
+    		final String separatorFileKey = separatorFileKeyBase + UNDERSCORE + groupName;
+    		final String sortsMapFileKey = sortsMapFileKeyBase + UNDERSCORE + groupName;
         	final String separatorFile = buildAndWriteSeparatorFOL(posExamples, negExamples, varTypes, nonConstValueVars, nonConstValueTypes,
-        			valueToConstantMap, refSpec, outputLoc);
-        	final String sortsMapFile = writeSortsMap(nonConstValueTypes, refSpec, outputLoc);
-            jsonOutput.put(separatorFileKey, separatorFile);
-            jsonOutput.put(sortsMapFileKey, sortsMapFile);
+        			valueToConstantMap, this.specName, groupName, this.outputLocation);
+        	final String sortsMapFile = writeSortsMap(nonConstValueTypes, this.specName, groupName, this.outputLocation);
+        	this.jsonStrs.put(separatorFileKey, separatorFile);
+        	this.jsonStrs.put(sortsMapFileKey, sortsMapFile);
     	}
     }
+	
+	
+	/* Static helper methods */
     
-    private static String writeSortsMap(final Set<StateVarType> nonConstValueTypes, final String specName, final String outputLoc) {
+    private static String writeSortsMap(final Set<StateVarType> nonConstValueTypes, final String specName, final String groupName, final String outputLoc) {
     	List<String> mappings = new ArrayList<>();
     	for (StateVarType type : nonConstValueTypes) {
     		final String name = "\"" + type.getName() + "\"";
@@ -166,7 +186,7 @@ public class RobustDiffRep {
     	}
     	final String map = "{" + String.join(",", mappings) + "}";
     	
-    	final String sortsMapFile = specName + "_sorts_map.json";
+    	final String sortsMapFile = specName + UNDERSCORE + groupName + "_sorts_map.json";
     	final String path = outputLoc + sortsMapFile;
     	Utils.writeFile(path, map);
         return path;
@@ -174,7 +194,7 @@ public class RobustDiffRep {
     
     private static String buildAndWriteSeparatorFOL(final Set<String> posExamples, final Set<String> negExamples, final Map<String, StateVarType> varTypes,
     		final Set<String> nonConstValueVars, final Set<StateVarType> nonConstValueTypes, final Map<String,String> valueToConstantMap,
-    		final String specName, final String outputLoc) {
+    		final String specName, final String groupName, final String outputLoc) {
     	Set<String> consts = new HashSet<>();
     	Set<String> modelElements = new HashSet<>();
     	Set<String> modelElementDefs = new HashSet<>();
@@ -226,7 +246,7 @@ public class RobustDiffRep {
     		}
     	}
     	
-    	final String separatorFile = specName + ".fol";
+    	final String separatorFile = specName + UNDERSCORE + groupName + ".fol";
     	final String path = outputLoc + separatorFile;
     	Utils.writeFile(path, builder.toString());
         return path;

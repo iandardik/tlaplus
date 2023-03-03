@@ -1,5 +1,8 @@
 TLA+ Module: Voting
-Safety boundary representation: out/safety_boundary_representation.txt
+Diff rep grouped by action:
+
+All:
+Safety boundary representation: out/Voting_All_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 Sort1 == {"Kevin","David","None","Ian"}
 /\ eoConfirm = "None"

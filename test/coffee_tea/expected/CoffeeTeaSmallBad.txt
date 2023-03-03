@@ -1,5 +1,8 @@
 TLA+ Module: CoffeeTeaSmallBad
-Safety boundary representation: out/safety_boundary_representation.txt
+Diff rep grouped by action:
+
+All:
+Safety boundary representation: out/CoffeeTeaSmallBad_All_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 /\ brewed = {}
 /\ temp = 70

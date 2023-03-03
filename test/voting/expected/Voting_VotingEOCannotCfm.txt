@@ -1,7 +1,11 @@
+TLA+ Module Comparison: Voting v. VotingEOCannotCfm
 Voting is strictly more robust than VotingEOCannotCfm
 
-TLA+ Module Comparison: eta(Voting) - eta(VotingEOCannotCfm)
-Safety boundary representation: out/diff_rep_Voting.txt
+Robustness comparison: eta(Voting) - eta(VotingEOCannotCfm)
+Diff rep grouped by action:
+
+All:
+Safety boundary representation: out/Voting_All_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 Sort1 == {"Kevin","David","None","Ian"}
 /\ eoConfirm = "None"

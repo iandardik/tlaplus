@@ -1,7 +1,11 @@
+TLA+ Module Comparison: CoffeeTeaSmall v. CoffeeTeaSmallBad
 CoffeeTeaSmall is strictly more robust than CoffeeTeaSmallBad
 
-TLA+ Module Comparison: eta(CoffeeTeaSmall) - eta(CoffeeTeaSmallBad)
-Safety boundary representation: out/diff_rep_CoffeeTeaSmall.txt
+Robustness comparison: eta(CoffeeTeaSmall) - eta(CoffeeTeaSmallBad)
+Diff rep grouped by action:
+
+All:
+Safety boundary representation: out/CoffeeTeaSmall_All_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 /\ brewed = {}
 /\ temp = 70
