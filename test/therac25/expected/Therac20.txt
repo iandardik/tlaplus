@@ -1,0 +1,3 @@
+TLA+ Module: Therac20
+Diff rep grouped by action:
+Spec is robust against ANY behavior or environment
