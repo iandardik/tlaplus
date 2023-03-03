@@ -43,6 +43,7 @@ public class Robustness {
 	private static final String DIFF_REP_STATE_FORMULA_ERROR = "diff_rep_state_formula_error";
 	private static final String MISSING_TYPEOK = "missing_typeok";
 	private static final String MISSING_BOTH_TYPEOKS = "missing_both_typeoks";
+	private static final String TYPE_OK = "TypeOK";
 	
 	
 	/*
@@ -127,47 +128,37 @@ public class Robustness {
     	Set<TLCState> safetyBoundary = kripke.safetyBoundary();
     	Set<String> safetyBoundaryStrs = Utils.stateSetToStringSet(safetyBoundary);
     	
-    	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundaryStrs, jsonOutput);
-    	diffRep.writeBoundary(fileName);
-    	
     	jsonOutput.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     	
-    	// a TypeOK is required to gather the info we need to create a sep.fol file
-    	final String typeOKInv = "TypeOK";
-    	final boolean hasTypeOK = tlc.hasInvariant(typeOKInv);
-    	if (hasTypeOK) {
-        	// compute the entire state space
-        	final TLC tlcTypeOK = new TLC();
-        	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
-        	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
-    	}
-    	else {
-        	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);
+    	if (!kripke.isSafe()) {
+        	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundaryStrs, jsonOutput);
+        	diffRep.writeBoundary(fileName);
+        	
+        	// a TypeOK is required to gather the info we need to create a sep.fol file
+        	if (tlc.hasInvariant(TYPE_OK)) {
+            	// compute the entire state space
+            	final TLC tlcTypeOK = new TLC();
+            	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
+            	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
+        	}
+        	else {
+            	jsonOutput.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);
+        	}
     	}
     }
     
     private static void computeDiffRep(final TLC tlc1, final TLC tlc2, final String outputLoc, Map<String,String> jsonOutput) {
-    	ExtKripke errPre1 = tlc1.getKripke().createErrPre();
-    	ExtKripke errPre2 = tlc2.getKripke().createErrPre();
-    	ExtKripke errPost1 = tlc1.getKripke().createErrPost();
-    	ExtKripke errPost2 = tlc2.getKripke().createErrPost();
+    	final ExtKripke kripke1 = tlc1.getKripke();
+    	final ExtKripke kripke2 = tlc2.getKripke();
+    	ExtKripke errPre1 = kripke1.createErrPre();
+    	ExtKripke errPre2 = kripke2.createErrPre();
+    	ExtKripke errPost1 = kripke1.createErrPost();
+    	ExtKripke errPost2 = kripke2.createErrPost();
+
+    	jsonOutput.put(SPEC1_IS_SAFE, kripke1.isSafe() ? TRUE : FALSE);
+    	jsonOutput.put(SPEC2_IS_SAFE, kripke2.isSafe() ? TRUE : FALSE);
     	
-    	if (errPre1.isEmpty() && errPre2.isEmpty()) {
-        	jsonOutput.put(SPEC1_IS_SAFE, TRUE);
-        	jsonOutput.put(SPEC2_IS_SAFE, TRUE);
-    		//System.out.println("Both specs are maximally robust.");
-    	}
-    	else if (errPre1.isEmpty()) {
-        	jsonOutput.put(SPEC1_IS_SAFE, TRUE);
-        	jsonOutput.put(SPEC2_IS_SAFE, FALSE);
-    		//System.out.println("Spec 1 is maximally robust (M1_err is empty).");
-    	}
-    	else if (errPre2.isEmpty()) {
-        	jsonOutput.put(SPEC1_IS_SAFE, FALSE);
-        	jsonOutput.put(SPEC2_IS_SAFE, TRUE);
-    		//System.out.println("Spec 2 is maximally robust (M2_err is empty).");
-    	}
-    	else {
+    	if (!kripke1.isSafe() && !kripke2.isSafe()) {
     		// compute \eta1-\eta2 and \eta2-\eta1
     		final String spec1 = tlc1.getSpecName();
     		final String spec2 = tlc2.getSpecName();
@@ -196,8 +187,7 @@ public class Robustness {
         	jsonOutput.put(diffRepStateEmptyKey, FALSE);
 
         	// a TypeOK is required to gather the info we need to create a sep.fol file
-        	final String typeOKInv = "TypeOK";
-        	final boolean bothHaveTypeOK = tlc1.hasInvariant(typeOKInv) && tlc2.hasInvariant(typeOKInv);
+        	final boolean bothHaveTypeOK = tlc1.hasInvariant(TYPE_OK) && tlc2.hasInvariant(TYPE_OK);
         	if (bothHaveTypeOK) {
             	// compute the entire state space
             	final TLC tlcTypeOK = new TLC();

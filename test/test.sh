@@ -60,4 +60,4 @@ test_suite() {
 
 
 test_suite "${test_dir_coff}"
-#test_suite "${test_dir_voting}"
+test_suite "${test_dir_voting}"
