@@ -17,6 +17,7 @@ import tlc2.tool.impl.FastTool;
 
 public class Robustness {
 
+	private static final boolean GROUP_DIFF_REP_BY_ACTION = false;
 	
 	private static final String COMPARISON_TYPE = "comparison_type";
 	private static final String SPEC_TO_PROPERTY = "spec_to_property";
@@ -130,7 +131,7 @@ public class Robustness {
     	
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
     	final Set<String> safetyBoundary = Utils.stateSetToStringSet(kripke.safetyBoundary());
-    	final Map<String, Set<String>> safetyBoundaryByGroup = kripke.safetyBoundaryPerAction(safetyBoundary);
+    	final Map<String, Set<String>> safetyBoundaryByGroup = kripke.safetyBoundaryPerAction();
     	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, safetyBoundaryByGroup, jsonStrs, jsonLists);
     	
     	if (!kripke.isSafe()) {
@@ -178,7 +179,7 @@ public class Robustness {
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
     	final Set<TLCState> diffRepTlcStates = ExtKripke.projectFirst(diffRepSet);
     	final Set<String> diffRepStates = Utils.stateSetToStringSet(diffRepTlcStates);
-    	final Map<String, Set<String>> diffRepStatesByGroup = groupTheDiffRep(diffRepSet, false);
+    	final Map<String, Set<String>> diffRepStatesByGroup = groupTheDiffRep(diffRepSet, GROUP_DIFF_REP_BY_ACTION);
 
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
     	RobustDiffRep diffRep = new RobustDiffRep(refSpec, specScope, outputLoc, diffRepStates, diffRepStatesByGroup, jsonStrs, jsonLists);

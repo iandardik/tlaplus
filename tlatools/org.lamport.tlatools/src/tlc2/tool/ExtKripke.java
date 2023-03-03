@@ -136,11 +136,11 @@ public class ExtKripke {
     }
     
     // returns a map of (action name) -> (safety boundary for the action)
-    public Map<String, Set<String>> safetyBoundaryPerAction(final Set<String> diffRepSet) {
+    public Map<String, Set<String>> safetyBoundaryPerAction() {
     	//return boundaryPerAction(safetyBoundary());
     	// TODO hack for now
 		Map<String, Set<String>> singleton = new HashMap<>();
-		singleton.put("All", diffRepSet);
+		singleton.put("All", Utils.stateSetToStringSet(safetyBoundary()));
 		return singleton;
     }
     
