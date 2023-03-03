@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import tlc2.Utils;
 import tlc2.tool.ExtKripke.Pair;
 
 import java.lang.StringBuilder;
@@ -134,14 +135,18 @@ public class ExtKripke {
     	return calculateBoundary(BoundaryType.error);
     }
     
-    private Set<TLCState> succ(TLCState s) {
-    	Set<TLCState> succStates = new HashSet<TLCState>();
-    	for (Pair<TLCState,TLCState> t : this.delta) {
-    		if (s.equals(t.first)) {
-    			succStates.add(t.second);
-    		}
-    	}
-    	return succStates;
+    // returns a map of (action name) -> (safety boundary for the action)
+    public Map<String, Set<String>> safetyBoundaryPerAction(final Set<String> diffRepSet) {
+    	//return boundaryPerAction(safetyBoundary());
+    	// TODO hack for now
+		Map<String, Set<String>> singleton = new HashMap<>();
+		singleton.put("All", diffRepSet);
+		return singleton;
+    }
+    
+    // returns a map of (action name) -> (error boundary for the action)
+    public Map<String, Set<String>> errorBoundaryPerAction() {
+    	return boundaryPerAction(errorBoundary());
     }
     
     // invariant: all states in frontier are safe (not in this.badStates)
@@ -178,6 +183,35 @@ public class ExtKripke {
 	    	frontier.removeAll(explored);
     	}
     	return boundary;
+    }
+    
+    private Map<String, Set<String>> boundaryPerAction(final Set<TLCState> entireBoundary) {
+    	Map<String, Set<String>> groupedBoundaries = new HashMap<>();
+    	for (TLCState s : entireBoundary) {
+			final String boundaryState = Utils.normalizeStateString(s.toString());
+    		for (TLCState t : succ(s)) {
+    			Pair<TLCState,TLCState> transition = new Pair<>(s,t);
+    			if (this.delta.contains(transition) && this.badStates.contains(t)) {
+    				final Action act = this.deltaActions.get(transition);
+    				final String actName = act.getName().toString();
+    				if (!groupedBoundaries.containsKey(actName)) {
+    					groupedBoundaries.put(actName, new HashSet<>());
+    				}
+    				groupedBoundaries.get(actName).add(boundaryState);
+    			}
+    		}
+    	}
+    	return groupedBoundaries;
+    }
+    
+    private Set<TLCState> succ(TLCState s) {
+    	Set<TLCState> succStates = new HashSet<TLCState>();
+    	for (Pair<TLCState,TLCState> t : this.delta) {
+    		if (s.equals(t.first)) {
+    			succStates.add(t.second);
+    		}
+    	}
+    	return succStates;
     }
     
     private Set<TLCState> notAlwaysNotPhiStates() {

@@ -44,6 +44,7 @@ public class Robustness {
 	private static final String MISSING_TYPEOK = "missing_typeok";
 	private static final String MISSING_BOTH_TYPEOKS = "missing_both_typeoks";
 	private static final String TYPE_OK = "TypeOK";
+	private static final String ALL = "All";
 	
 	
 	/*
@@ -129,7 +130,8 @@ public class Robustness {
     	
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
     	final Set<String> safetyBoundary = Utils.stateSetToStringSet(kripke.safetyBoundary());
-    	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, jsonStrs, jsonLists);
+    	final Map<String, Set<String>> safetyBoundaryByGroup = kripke.safetyBoundaryPerAction(safetyBoundary);
+    	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, safetyBoundaryByGroup, jsonStrs, jsonLists);
     	
     	if (!kripke.isSafe()) {
         	final String fileName = "safety_boundary_representation";
@@ -179,9 +181,10 @@ public class Robustness {
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
     	final Set<TLCState> diffRepTlcStates = ExtKripke.projectFirst(diffRepSet);
     	final Set<String> diffRepStates = Utils.stateSetToStringSet(diffRepTlcStates);
+    	final Map<String, Set<String>> diffRepStatesByGroup = groupTheDiffRep(diffRepSet, false);
 
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
-    	RobustDiffRep diffRep = new RobustDiffRep(refSpec, specScope, outputLoc, diffRepStates, jsonStrs, jsonLists);
+    	RobustDiffRep diffRep = new RobustDiffRep(refSpec, specScope, outputLoc, diffRepStates, diffRepStatesByGroup, jsonStrs, jsonLists);
     	
     	if (diffRepSet.size() > 0) {
         	// the two specs have overlapping error traces / state space so we compare them
@@ -198,6 +201,27 @@ public class Robustness {
         	else {
             	jsonStrs.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_BOTH_TYPEOKS);
         	}
+    	}
+    }
+    
+    private static Map<String, Set<String>> groupTheDiffRep(final Set<Pair<TLCState,Action>> diffRepSet, final boolean groupByAction) {
+    	if (groupByAction) {
+    		Map<String, Set<String>> diffRepGroups = new HashMap<>();
+    		for (Pair<TLCState,Action> diffRep : diffRepSet) {
+    			final String group = diffRep.second.getName().toString();
+    			final String state = Utils.normalizeStateString(diffRep.first.toString());
+    			if (!diffRepGroups.containsKey(group)) {
+    				diffRepGroups.put(group, new HashSet<>());
+    			}
+    			diffRepGroups.get(group).add(state);
+    		}
+    		return diffRepGroups;
+    	}
+    	else {
+        	final Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRepSet);
+			Map<String, Set<String>> singleton = new HashMap<>();
+			singleton.put(ALL, Utils.stateSetToStringSet(diffRepStates));
+			return singleton;
     	}
     }
 	
