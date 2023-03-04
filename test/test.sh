@@ -4,6 +4,7 @@ rob="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/robustness.py"
 test_dir_coff="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/coffee_tea/"
 test_dir_voting="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/voting/"
 test_dir_therac="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/therac25/"
+test_dir_fixed_mutex="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/fixed_mutex/"
 
 test_prop() {
     tla_file="${1}.tla"
@@ -63,3 +64,4 @@ test_suite() {
 test_suite "${test_dir_coff}"
 test_suite "${test_dir_voting}"
 test_suite "${test_dir_therac}"
+test_suite "${test_dir_fixed_mutex}"

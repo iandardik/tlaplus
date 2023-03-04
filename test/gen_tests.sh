@@ -4,6 +4,7 @@ rob="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/robustness.py"
 test_dir_coff="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/coffee_tea/"
 test_dir_voting="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/voting/"
 test_dir_therac="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/therac25/"
+test_dir_fixed_mutex="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/fixed_mutex/"
 
 gen_test_suite() {
     pushd "${1}"
@@ -41,3 +42,6 @@ gen_test_suite "${test_dir_voting}" "${voting_tests[@]}"
 
 therac_tests=("Therac25" "Therac20")
 gen_test_suite "${test_dir_therac}" "${therac_tests[@]}"
+
+fixed_mutex_tests=("MutexExample")
+gen_test_suite "${test_dir_fixed_mutex}" "${fixed_mutex_tests[@]}"
