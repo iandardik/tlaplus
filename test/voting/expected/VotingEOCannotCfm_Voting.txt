@@ -13,4 +13,4 @@ Sort1 == {"Kevin","David","None","Ian"}
 /\ eoConfirm = "None"
 /\ booth = {"eofficial"}
 /\ state = "confirm"
-/\ \A S \in Sort1 : (voterChoice # "None" /\ (voterChoice = S => eoChoice = S))
+/\ \A S \in Sort1 : ((eoChoice = S => voterChoice = S) /\ voterChoice # "None")
