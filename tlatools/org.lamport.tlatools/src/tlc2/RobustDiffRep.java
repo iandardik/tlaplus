@@ -185,9 +185,10 @@ public class RobustDiffRep {
     		for (String e : type.getDomain()) {
     			assert(valueToConstantMap.containsKey(e));
     			final String elem = valueToConstantMap.get(e);
+    			final String elemConst = "e" + elem + "Const";
     	    	consts.add("(constant " + elem + " " + typeName + ")");
-    	    	modelElements.add("(" + elem + "Const " + typeName + ")");
-    	    	modelElementDefs.add("(= " + elem + " " + elem + "Const)");
+    	    	modelElements.add("(" + elemConst + " " + typeName + ")");
+    	    	modelElementDefs.add("(= " + elem + " " + elemConst + ")");
     		}
     	}
     	Set<String> sorts = new HashSet<>();
@@ -287,7 +288,7 @@ public class RobustDiffRep {
     		final String var = assg.first;
     		if (nonConstValueVars.contains(var)) {
     			assert(valueToConstantMap.containsKey(assg.second));
-        		final String val = valueToConstantMap.get(assg.second) + "Const";
+        		final String val = "e" + valueToConstantMap.get(assg.second) + "Const";
         		final String sepConjunct = "    (" + var + " " + val + ")";
         		separatorConjuncts.add(sepConjunct);
     		}

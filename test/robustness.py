@@ -57,6 +57,11 @@ def run_fol_separator(outdir, sep_file):
     result = subprocess.run(cmd_args, text=True, capture_output=True)
     os.chdir(orig_dir)
 
+    if result.returncode != 0:
+        print("FOL Separator tool failed with the following error:")
+        print(result.stderr)
+        return None
+
     lines = result.stdout.split("\n")
     # last line of stdout contains the json output
     jsonResult = json.loads(lines[-2])
@@ -119,6 +124,10 @@ def run_robustness(args):
     assert jsonResult['comparison_type'] == 'spec_to_property'
     assert jsonResult['spec_name'] == spec_name
 
+    if "diff_rep_state_formula_error" in jsonResult:
+        err_msg = jsonResult["diff_rep_state_formula_error"]
+        print("Found error while calculating robustness: " + err_msg)
+
     print("TLA+ Module: " + spec_name)
     print("Diff rep grouped by action:")
     spec_is_safe = jsonResult["spec_is_safe"]
@@ -156,6 +165,10 @@ def run_comparison(args):
     assert jsonResult['comparison_type'] == 'spec_to_spec'
     assert jsonResult['spec1_name'] == spec1_name
     assert jsonResult['spec2_name'] == spec2_name
+
+    if "diff_rep_state_formula_error" in jsonResult:
+        err_msg = jsonResult["diff_rep_state_formula_error"]
+        print("Found error while calculating robustness: " + err_msg)
 
     spec1_is_safe = jsonResult["spec1_is_safe"]
     spec2_is_safe = jsonResult["spec2_is_safe"]
