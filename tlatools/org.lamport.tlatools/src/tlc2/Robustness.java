@@ -104,7 +104,7 @@ public class Robustness {
     	final ExtKripke kripkeClosed = tlcClosed.getKripke();
     	final ExtKripke kripkeCmp = new ExtKripke(kripkeM, kripkeClosed);
     	
-    	computePropertyDiffRep(tlaM, tlcM, kripkeCmp, outputLoc, jsonStrs, jsonLists);
+    	computeEnvDiffRep(tlaM, tlcM, kripkeCmp, outputLoc, jsonStrs, jsonLists);
     	
     	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_ENV);
     	jsonStrs.put(SPEC_NAME, tlcM.getSpecName());
@@ -149,11 +149,21 @@ public class Robustness {
     
     private static void computePropertyDiffRep(final String tlaFile, final TLC tlc, final ExtKripke kripke, final String outputLoc,
     		Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
+    	computeSpecDiffRep(tlaFile, tlc, kripke, outputLoc, kripke.safetyBoundaryPerAction(), jsonStrs, jsonLists);
+    }
+    
+    private static void computeEnvDiffRep(final String tlaFile, final TLC tlc, final ExtKripke kripke, final String outputLoc,
+    		Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
+    	computeSpecDiffRep(tlaFile, tlc, kripke, outputLoc, kripke.robustSafetyBoundaryPerAction(), jsonStrs, jsonLists);
+    }
+    
+    private static void computeSpecDiffRep(final String tlaFile, final TLC tlc, final ExtKripke kripke, final String outputLoc,
+    		final Map<String, Set<String>> safetyBoundaryByGroup,
+    		Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	jsonStrs.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     	
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
     	final Set<String> safetyBoundary = Utils.stateSetToStringSet(kripke.safetyBoundary());
-    	final Map<String, Set<String>> safetyBoundaryByGroup = kripke.safetyBoundaryPerAction();
     	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, safetyBoundaryByGroup, jsonStrs, jsonLists);
     	
     	if (!kripke.isSafe()) {
@@ -287,49 +297,6 @@ public class Robustness {
     	ExtKripke errPostKripke = kripke.createErrPost();
     	final boolean strongFairness = false; // do not add SF to err post
     	return kripkeToTLA(tag, tlc, errPostKripke, tla, cfg, outputLoc, strongFairness, vars);
-    }
-    
-    private static String envAsPropertyTLA(final String specNameM, final String specNameEnv, final Set<String> varsM, final Set<String> varsEnv, final String outputLoc) {
-        final String specName = "EnvAsProp";
-        final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
-        final String endModule = "=============================================================================";
-        
-        ArrayList<String> varNameList1 = Utils.toArrayList(varsM);
-        ArrayList<String> varNameList2 = Utils.toArrayList(varsEnv);
-        
-        varsM.addAll(varsEnv);
-        ArrayList<String> combineVarNameList = Utils.toArrayList(varsM);
-        
-        final String varList = String.join(", ", combineVarNameList);
-        final String varsDecl = "VARIABLES " + varList;
-        
-        final String spec1 = "S1 == INSTANCE " + specNameM + " WITH " + Utils.instanceWithList(varNameList1);
-        final String spec2 = "S2 == INSTANCE " + specNameEnv + " WITH " + Utils.instanceWithList(varNameList2);
-        final String spec1Def = "SpecM == S1!Spec"; // TODO implicit assumption that spec defs will be called Spec
-        final String spec2Def = "SpecEnv == S2!Spec";
-
-        StringBuilder builder = new StringBuilder();
-        builder.append(specDecl).append("\n");
-        builder.append(varsDecl).append("\n");
-        builder.append("\n");
-        builder.append(spec1).append("\n");
-        builder.append("\n");
-        builder.append(spec2).append("\n");
-        builder.append("\n");
-        builder.append(spec1Def).append("\n");
-        builder.append(spec2Def).append("\n");
-        builder.append(endModule).append("\n");
-        builder.append("\n");
-        
-        final String name = outputLoc + specName + ".tla";
-        Utils.writeFile(name, builder.toString());
-        
-        return name;
-    }
-    
-    private static ArrayList<String> getVarNamesInSpec(final TLC tlc) {
-        FastTool ft = (FastTool) tlc.tool;
-        return Utils.toArrayList(ft.getVarNames());
     }
     
     private static String combineSpecTLA(final String tag, final String specName1, final String specName2, final Set<String> vars1, final Set<String> vars2, final String outputLoc) {

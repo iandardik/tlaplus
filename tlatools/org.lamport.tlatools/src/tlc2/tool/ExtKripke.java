@@ -22,66 +22,45 @@ public class ExtKripke {
     private Set<TLCState> badStates;
     private Set<Pair<TLCState,TLCState>> delta;
     private Map<Pair<TLCState,TLCState>, Action> deltaActions;
+    private Set<TLCState> envStates;
 
     public ExtKripke() {
-    	this.initStates = new HashSet<TLCState>();
-        this.allStates = new HashSet<TLCState>();
-        this.badStates = new HashSet<TLCState>();
-        this.delta = new HashSet<Pair<TLCState,TLCState>>();
-        this.deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>();
+    	this.initStates = new HashSet<>();
+        this.allStates = new HashSet<>();
+        this.badStates = new HashSet<>();
+        this.delta = new HashSet<>();
+        this.deltaActions = new HashMap<>();
+    	this.envStates = new HashSet<>();
     }
 
     public ExtKripke(final ExtKripke src) {
-    	this.initStates = new HashSet<TLCState>(src.initStates);
-    	this.allStates = new HashSet<TLCState>(src.allStates);
-    	this.badStates = new HashSet<TLCState>(src.badStates);
-    	this.delta = new HashSet<Pair<TLCState,TLCState>>(src.delta);
-    	this.deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>(src.deltaActions);
+    	this.initStates = new HashSet<>(src.initStates);
+    	this.allStates = new HashSet<>(src.allStates);
+    	this.badStates = new HashSet<>(src.badStates);
+    	this.delta = new HashSet<>(src.delta);
+    	this.deltaActions = new HashMap<>(src.deltaActions);
+    	this.envStates = new HashSet<>(src.envStates);
     }
 
     // assumes that the state space of srcClosed is more refined than the state space of srcM.
     // this assumption is generally valid because the closed system is composed of M, and hence
     // contains all state vars that are in M.
     public ExtKripke(final ExtKripke srcM, final ExtKripke srcClosed) {
-    	if (srcM == null) {
-    		throw new RuntimeException("M is null!");
-    	}
-    	if (srcClosed == null) {
-    		throw new RuntimeException("Closed system is null!");
-    	}
-    	if (srcClosed.badStates.size() > 0) {
+    	this(srcM);
+    	if (!srcClosed.badStates.isEmpty()) {
     		throw new RuntimeException("Closed system is not safe!");
     	}
-    	this.initStates = new HashSet<TLCState>();
-    	this.allStates = new HashSet<TLCState>();
-    	this.badStates = new HashSet<TLCState>();
-    	this.delta = new HashSet<Pair<TLCState,TLCState>>();
-    	this.deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>(srcM.deltaActions);
-
-        // add init states that are in both M and the closed system
-    	final Set<TLCState> srcMGoodStates = setMinus(srcM.allStates, srcM.badStates);
-        final Set<TLCState> srcMGoodInitStates = intersection(srcM.initStates, srcMGoodStates);
-    	for (final TLCState s : srcMGoodInitStates) {
-    		if (refinedContainerContainsAbstractState(srcClosed.initStates, s)) {
-    			addInitState(s);
-    		}
+    	if (!srcM.envStates.isEmpty()) {
+    		throw new RuntimeException("M contains env states!");
     	}
     	
-        // we construct the set of bad states as: any good state that is NOT in the closed system
+        // add env states. small optimization: we know that all env states are safe
+    	final Set<TLCState> srcMGoodStates = setMinus(srcM.allStates, srcM.badStates);
     	for (final TLCState s : srcMGoodStates) {
     		if (refinedContainerContainsAbstractState(srcClosed.allStates, s)) {
-    			addGoodState(s);
-    		} else {
-    			addBadState(s);
+    			this.envStates.add(s);
     		}
     	}
-        
-        // only add transitions that are to/from the new state space
-        for (final Pair<TLCState,TLCState> t : srcM.delta) {
-        	if (this.allStates.contains(t.first) && this.allStates.contains(t.second)) {
-        		this.delta.add(t);
-        	}
-        }
     }
     
     private static boolean refinedContainerContainsAbstractState(final Set<TLCState> container, final TLCState abstrState) {
@@ -205,6 +184,12 @@ public class ExtKripke {
     	return calculateBoundary(BoundaryType.safety);
     }
     
+    public Set<TLCState> robustSafetyBoundary() {
+    	// the set of states that leave the env, but are guaranteed to be 1-step safe
+    	final Set<TLCState> nonEnvStates = setMinus(this.allStates, this.envStates);
+    	return setMinus(calculateBoundary(BoundaryType.safety, nonEnvStates), calculateBoundary(BoundaryType.safety, this.badStates));
+    }
+    
     private Set<TLCState> errorBoundary() {
     	return calculateBoundary(BoundaryType.error);
     }
@@ -214,25 +199,54 @@ public class ExtKripke {
     	return boundaryPerAction(safetyBoundary());
     }
     
+    // returns a map of (action name) -> (robust safety boundary for the action)
+    public Map<String, Set<String>> robustSafetyBoundaryPerAction() {
+    	final Set<TLCState> nonEnvStates = setMinus(this.allStates, this.envStates);
+    	final Set<TLCState> envBoundaryStates = calculateBoundary(BoundaryType.safety, nonEnvStates);
+    	Map<String, Set<String>> leaveEnv = boundaryPerAction(envBoundaryStates, nonEnvStates);
+    	final Map<String, Set<String>> safetyBoundary = safetyBoundaryPerAction();
+    	Set<String> keysToRemove = new HashSet<>();
+    	for (final String act : leaveEnv.keySet()) {
+    		if (safetyBoundary.containsKey(act)) {
+    			// remove any states that can lead to an error through this action in 1 step
+    			final Set<String> robustSafetyBoundaryForAct = setMinus(leaveEnv.get(act), safetyBoundary.get(act));
+    			if (robustSafetyBoundaryForAct.isEmpty()) {
+    				keysToRemove.add(act);
+    			} else {
+    				leaveEnv.put(act, robustSafetyBoundaryForAct);
+    			}
+    		}
+    	}
+    	for (final String k : keysToRemove) {
+    		leaveEnv.remove(k);
+    	}
+    	return leaveEnv;
+    }
+    
     // returns a map of (action name) -> (error boundary for the action)
     public Map<String, Set<String>> errorBoundaryPerAction() {
     	return boundaryPerAction(errorBoundary());
     }
     
-    // invariant: all states in frontier are safe (not in this.badStates)
+
     private Set<TLCState> calculateBoundary(BoundaryType boundaryType) {
-    	Set<TLCState> goodInitStates = setMinus(this.initStates, this.badStates);
+    	return calculateBoundary(boundaryType, this.badStates);
+    }
+    
+    // invariant: all states in frontier are safe (not in errorStates)
+    private Set<TLCState> calculateBoundary(final BoundaryType boundaryType, final Set<TLCState> errorStates) {
+    	Set<TLCState> goodInitStates = setMinus(this.initStates, errorStates);
     	Set<TLCState> explored = new HashSet<>(goodInitStates);
     	Set<TLCState> frontier = new HashSet<>(goodInitStates);
     	Set<TLCState> boundary = (boundaryType.equals(BoundaryType.safety)) ?
-    			new HashSet<>() : intersection(this.initStates, this.badStates);
+    			new HashSet<>() : intersection(this.initStates, errorStates);
     	
     	while (!frontier.isEmpty()) {
     		Set<TLCState> addToFrontier = new HashSet<TLCState>();
 	    	for (TLCState s : frontier) {
 	    		explored.add(s);
 	    		for (TLCState t : this.succ(s)) {
-	    			if (this.badStates.contains(t)) {
+	    			if (errorStates.contains(t)) {
 	    				// the state which we add to the boundary depends on whether we're calculating:
 	    				// the safety boundary or (else) the error boundary
 	    				switch (boundaryType) {
@@ -256,12 +270,16 @@ public class ExtKripke {
     }
     
     private Map<String, Set<String>> boundaryPerAction(final Set<TLCState> entireBoundary) {
+    	return boundaryPerAction(entireBoundary, this.badStates);
+    }
+        
+    private Map<String, Set<String>> boundaryPerAction(final Set<TLCState> entireBoundary, final Set<TLCState> errorStates) {
     	Map<String, Set<String>> groupedBoundaries = new HashMap<>();
     	for (TLCState s : entireBoundary) {
 			final String boundaryState = Utils.normalizeStateString(s.toString());
     		for (TLCState t : succ(s)) {
     			Pair<TLCState,TLCState> transition = new Pair<>(s,t);
-    			if (this.delta.contains(transition) && this.badStates.contains(t)) {
+    			if (this.delta.contains(transition) && errorStates.contains(t)) {
     				final Action act = this.deltaActions.get(transition);
     				final String actName = act.getName().toString();
     				if (!groupedBoundaries.containsKey(actName)) {
