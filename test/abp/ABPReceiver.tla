@@ -4,12 +4,13 @@ VARIABLES receiverState, receiverBit, output
 
 vars == <<receiverState, receiverBit, output>>
 
-MessageValues == {"Ian", "David", "Kevin"}
+StateValues == {"waitRec", "output", "ackWaitRec"}
 BitValues == {0,1}
+MessageValues == {"Ian", "David", "Kevin"}
 
 Init ==
     /\ receiverState = "waitRec"
-    /\ receiverBit \in BitValues
+    /\ receiverBit = 0
     /\ output \in MessageValues
 
 Receive0(m) ==
@@ -47,9 +48,19 @@ Ack1 ==
     /\ receiverBit = 0
     /\ UNCHANGED vars
 
+Next ==
+    \E m \in MessageValues :
+        \/ Receive0(m)
+        \/ Receive1(m)
+        \/ Output
+        \/ Ack0
+        \/ Ack1
+
+Spec == Init /\ [][Next]_vars
+
 TypeOK ==
-    /\ receiverState \in {"waitRec", "output", "ackWaitRec"}
-    /\ receiverBit \in {0,1}
+    /\ receiverState \in StateValues
+    /\ receiverBit \in BitValues
     /\ output \in MessageValues
 
 =============================================================================

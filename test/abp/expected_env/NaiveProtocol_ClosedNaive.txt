@@ -5,7 +5,7 @@ Receive1:
 Safety boundary representation: out/NaiveProtocol_Receive1_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 /\ receiverState = "waitRec"
-/\ senderState # "waitAck"
+/\ "David" # "Kevin"
 
 GetAck0:
 Safety boundary representation: out/NaiveProtocol_GetAck0_diff_rep.txt
@@ -19,7 +19,7 @@ Receive0:
 Safety boundary representation: out/NaiveProtocol_Receive0_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 /\ receiverState = "waitRec"
-/\ senderState # "waitAck"
+/\ "send" # "waitInput"
 
 GetAck1:
 Safety boundary representation: out/NaiveProtocol_GetAck1_diff_rep.txt

@@ -426,7 +426,7 @@ public class Robustness {
 
         final String moduleList = String.join(", ", moduleNameList);
         final String varList = String.join(", ", varNameList);
-        final String modulesDecl = "EXTENDS " + moduleList;
+        final String modulesDecl = moduleList.isEmpty() ? "" : "EXTENDS " + moduleList;
         final String varsDecl = "VARIABLES " + varList;
         final String varsSeq = varsSeqName + " == <<" + varList + ">>";
         final String specFairness = fairnessConditionString(tla, tlc);

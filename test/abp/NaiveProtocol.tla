@@ -49,6 +49,6 @@ Spec == Init /\ [][Next]_vars
 
 TypeOK == Sender!TypeOK /\ Receiver!TypeOK
 
-MessageReceived == (receiverState = "output") => (output = input)
+MessageReceived == (senderState = "waitInput" /\ receiverState = "output") => (output = input)
 
 =============================================================================

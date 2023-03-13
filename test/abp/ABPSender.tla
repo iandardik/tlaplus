@@ -4,13 +4,13 @@ VARIABLES senderState, senderBit, input
 
 vars == <<senderState, senderBit, input>>
 
-StateValues == {"waitInput", "send", "waitAck"}
+StateValues == {"waitInput", "send"}
 BitValues == {0,1}
 MessageValues == {"Ian", "David", "Kevin"}
 
 Init ==
     /\ senderState = "waitInput"
-    /\ senderBit \in BitValues
+    /\ senderBit = 0
     /\ input \in MessageValues
 
 Input(m) ==
@@ -51,9 +51,19 @@ GetAck1 ==
        /\ senderBit = 0
        /\ UNCHANGED vars
 
+Next ==
+    \E m \in MessageValues :
+        \/ Input(m)
+        \/ Send0(m)
+        \/ Send1(m)
+        \/ GetAck0
+        \/ GetAck1
+
+Spec == Init /\ [][Next]_vars
+
 TypeOK ==
-    /\ senderState \in {"waitInput", "send"}
-    /\ senderBit \in {0,1}
+    /\ senderState \in StateValues
+    /\ senderBit \in BitValues
     /\ input \in MessageValues
 
 =============================================================================
