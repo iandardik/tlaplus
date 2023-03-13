@@ -10,7 +10,7 @@ MessageValues == {"Ian", "David", "Kevin"}
 
 Init ==
     /\ senderState = "waitInput"
-    /\ senderBit \in BitValues
+    /\ senderBit = 0
     /\ input \in MessageValues
 
 Input(m) ==

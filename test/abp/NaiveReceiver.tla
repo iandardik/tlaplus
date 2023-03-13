@@ -9,7 +9,7 @@ BitValues == {0,1}
 
 Init ==
     /\ receiverState = "waitRec"
-    /\ receiverBit \in BitValues
+    /\ receiverBit = 0
     /\ output \in MessageValues
 
 Receive0(m) ==
