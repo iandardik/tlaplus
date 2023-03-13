@@ -24,6 +24,25 @@ test_prop() {
     fi
 }
 
+test_env() {
+    tla_file1="${1}.tla"
+    tla_file2="${2}.tla"
+    actual_file="out/${1}_${2}_actual.txt"
+    expected_file="expected_env/${1}_${2}.txt"
+    mkdir -p out
+    python3 "${rob}" --outdir out --spec "${tla_file1}" --spec2 "${tla_file2}" --env > "${actual_file}"
+    diff=$(diff "${actual_file}" "${expected_file}")
+    rm -rf out/
+    if [[ "${diff}" = "" ]]
+    then
+        echo "${1}_${2} pass"
+    else
+        echo "${1}_${2} failed with diff (actual v. expected):"
+        echo "${diff}"
+        exit 0
+    fi
+}
+
 test_cmp() {
     tla_file1="${1}.tla"
     tla_file2="${2}.tla"
@@ -45,7 +64,7 @@ test_cmp() {
 
 test_suite() {
     pushd "${1}"
-    for f in `ls expected`
+    for f in `ls expected 2>/dev/null`
     do
         name=$(echo "${f}" | sed 's/\.txt$//g')
         has_underscore=$(echo "${name}" | grep "_")
@@ -58,6 +77,18 @@ test_suite() {
             test_cmp "${name1}" "${name2}"
         fi
     done
+    for f in `ls expected_env 2>/dev/null`
+    do
+        name=$(echo "${f}" | sed 's/\.txt$//g')
+        has_underscore=$(echo "${name}" | grep "_")
+        if [[ "${has_underscore}" != "" ]]
+        then
+            name1=$(echo "${name}" | sed 's/_.*$//g')
+            name2=$(echo "${name}" | sed 's/^.*_//g')
+            test_env "${name1}" "${name2}"
+        fi
+    done
+    popd
 }
 
 

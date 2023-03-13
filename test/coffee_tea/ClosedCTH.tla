@@ -1,4 +1,4 @@
---------------------------- MODULE ClosedCTS ---------------------------
+--------------------------- MODULE ClosedCTH ---------------------------
 
 VARIABLES brewed, temp
 VARIABLES user, location, coff
