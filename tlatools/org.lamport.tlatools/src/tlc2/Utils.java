@@ -44,6 +44,9 @@ public class Utils {
 		assert(kvp.length == 2);
 		final String key = kvp[0].trim();
 		final String val = kvp[1].trim();
+		if (val.equals("null")) {
+			System.err.println("Warning: found null valued state var!");
+		}
 		return new Pair<>(key,val);
     }
     

@@ -374,8 +374,15 @@ public class TLC {
      */
     public static void main(String[] args) throws Exception
     {
-    	Robustness.calc(args);
-    	System.exit(0);
+    	try {
+    		Robustness.calc(args);
+    	}
+    	catch (Exception e) {
+    		e.printStackTrace();
+    	}
+    	finally {
+    		System.exit(0);
+    	}
     }
     
     public static void runTLC(final String tla, final String cfg, TLC tlc) {

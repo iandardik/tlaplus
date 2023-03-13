@@ -40,4 +40,9 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
+TypeOK ==
+    /\ transState \in {"send", "receive"}
+    /\ message \in MessageValues
+    /\ ackState \in {"ack", "getAck"}
+
 =============================================================================

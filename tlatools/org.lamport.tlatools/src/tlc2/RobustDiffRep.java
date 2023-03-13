@@ -256,9 +256,14 @@ public class RobustDiffRep {
     			constValueVars.add(var);
     			constValueValues.put(var, exactValue);
     		} else {
-    			StateVarType varType = varTypes.get(var);
-    			nonConstValueVars.add(var);
-    			nonConstValueTypes.add(varType);
+    			if (varTypes.containsKey(var)) {
+	    			StateVarType varType = varTypes.get(var);
+	    			nonConstValueVars.add(var);
+	    			nonConstValueTypes.add(varType);
+    			}
+                else {
+                    System.err.println("Warning! TypeOK does not describe all state variables!");
+                }
     		}
     	}
     }

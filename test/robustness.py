@@ -80,16 +80,22 @@ def run_tlc_tool(cmd_args, outdir):
 def run_tlc_robust(spec_name, spec, cfg, outdir):
     cmd_args = ["java", "-jar", tlcian_jar, "--prop", outdir, spec, cfg]
     result = run_tlc_tool(cmd_args, outdir)
+    if result.stderr != "":
+        print(result.stderr)
     return json.loads(result.stdout)
 
 def run_tlc_robust_env(spec1_name, spec1, cfg1, spec2_name, spec2, cfg2, outdir):
     cmd_args = ["java", "-jar", tlcian_jar, "--env", outdir, spec1, cfg1, spec2, cfg2]
     result = run_tlc_tool(cmd_args, outdir)
+    if result.stderr != "":
+        print(result.stderr)
     return json.loads(result.stdout)
 
 def run_tlc_robust_compare(spec1_name, spec1, cfg1, spec2_name, spec2, cfg2, outdir):
     cmd_args = ["java", "-jar", tlcian_jar, "--cmp", outdir, spec1, cfg1, spec2, cfg2]
     result = run_tlc_tool(cmd_args, outdir)
+    if result.stderr != "":
+        print(result.stderr)
     return json.loads(result.stdout)
 
 def run_tlc_check(spec, cfg, outdir):

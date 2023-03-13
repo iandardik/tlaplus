@@ -67,7 +67,6 @@ public class Robustness {
     		System.out.println("usage: tlc-ian <flag> <output_loc> <spec1> <cfg1> [<spec2> <cfg2>]\nflag=--prop|--env|--cmp");
     	}
     	System.out.println(Utils.asJson(jsonStrs, jsonLists));
-    	System.exit(0);
     }
     
     // M_err_rep: states that are in (M_err \cap P) but MAY leave P in one step
