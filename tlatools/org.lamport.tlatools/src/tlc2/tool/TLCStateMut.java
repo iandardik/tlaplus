@@ -14,6 +14,7 @@ import java.util.TreeSet;
 import tla2sany.semantic.OpDeclNode;
 import tla2sany.semantic.SemanticNode;
 import tla2sany.semantic.SymbolNode;
+import tlc2.TLC;
 import tlc2.TLCGlobals;
 import tlc2.util.Context;
 import tlc2.util.FP64;
@@ -35,6 +36,7 @@ import util.WrongInvocationException;
  */
 public final class TLCStateMut extends TLCState implements Cloneable, Serializable {
   private IValue values[];
+  private final String tlcKey;
   private static ITool mytool = null;
 
   /**
@@ -49,7 +51,10 @@ public final class TLCStateMut extends TLCState implements Cloneable, Serializab
    */
   private static IMVPerm[] perms = null;
 
-  private TLCStateMut(IValue[] vals) { this.values = vals; }
+  private TLCStateMut(IValue[] vals) {
+	  this.values = vals;
+	  this.tlcKey = TLC.getTlcKey();
+  }
   
   public static void setVariables(OpDeclNode[] variables) 
   {
@@ -84,13 +89,12 @@ public final class TLCStateMut extends TLCState implements Cloneable, Serializab
     if (obj instanceof TLCStateMut) {
       TLCStateMut state = (TLCStateMut)obj;
       for (int i = 0; i < this.values.length; i++) {
-	if (this.values[i] == null) {
-	  if (state.values[i] != null) return false;
-	}
-	else if (state.values[i] == null ||
-		 !this.values[i].equals(state.values[i])) {
-	  return false;
-	}
+		if (this.values[i] == null) {
+		  if (state.values[i] != null) return false;
+		}
+		else if (state.values[i] == null || !this.values[i].equals(state.values[i])) {
+		  return false;
+		}
       }
       return true;
     }
@@ -115,8 +119,9 @@ public final class TLCStateMut extends TLCState implements Cloneable, Serializab
   }
 
   public final IValue lookup(UniqueString var) {
-    int loc = var.getVarLoc();
+    int loc = var.getVarLoc(this.tlcKey);
     if (loc < 0) return null;
+    if (loc >= this.values.length) return null;
     return this.values[loc];
   }
 
@@ -341,13 +346,15 @@ public final class TLCStateMut extends TLCState implements Cloneable, Serializab
     }
     else {
       for (int i = 0; i < vlen; i++) {
-	UniqueString key = vars[i].getName();
-	IValue val = this.lookup(key);
-	result.append("/\\ ");
-	result.append(key.toString());
-    result.append(" = ");
-    result.append(Values.ppr(val));
-    result.append("\n");
+		UniqueString key = vars[i].getName();
+		IValue val = this.lookup(key);
+		if (val != null) {
+			result.append("/\\ ");
+			result.append(key.toString());
+		    result.append(" = ");
+		    result.append(Values.ppr(val));
+		    result.append("\n");
+		}
       }
     }
     return result.toString();

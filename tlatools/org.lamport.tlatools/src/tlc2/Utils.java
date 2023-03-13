@@ -23,7 +23,11 @@ public class Utils {
 	private static final String LSQBRACE = "[";
 	private static final String RSQBRACE = "]";
 
-    
+
+    public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(TLCState tlaState) {
+    	return extractKeyValuePairsFromState(normalizeStateString(tlaState.toString()));
+    }
+
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {
     	ArrayList<Pair<String,String>> kvPairs = new ArrayList<>();
     	String[] conjuncts = tlaState.split(Pattern.quote("/\\"));

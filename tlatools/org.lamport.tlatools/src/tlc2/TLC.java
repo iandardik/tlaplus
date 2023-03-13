@@ -80,6 +80,16 @@ import util.UsageGenerator;
  * @author Simon Zambrovski
  */
 public class TLC {
+
+	private static TLC currentInstance = null;
+	
+	public static String getTlcKey() {
+		if (currentInstance == null) {
+			throw new RuntimeException("TLC.currentInstance is null!");
+		}
+		return currentInstance.tlcKey;
+	}
+	
 	/**
 	 * Whether the TLA+ spec is encoded in a .jar file, not a TLA+ text file.
 	 */
@@ -134,6 +144,10 @@ public class TLC {
     // SZ Feb 20, 2009: the class has been 
     // transformed from static to dynamic
 
+    /**
+     * Unique key per TLC object for indexing UniqueString's per TLC instance
+     */
+    private final String tlcKey;
     /**
      * Kripke Structure representing the TLA+ model
      */
@@ -246,9 +260,17 @@ public class TLC {
     private TraceExplorationSpec teSpec;
     
     /**
-     * Initialization
+     * Default Initialization
      */
 	public TLC() {
+		this("default");
+	}
+    
+    /**
+     * Initialization
+     */
+	public TLC(final String key) {
+		tlcKey = key;
 		kripke = null;
         welcomePrinted = false;
         
@@ -274,7 +296,7 @@ public class TLC {
 	}
 	
 	public ExtKripke getKripke() {
-		return kripke;
+		return this.kripke;
 	}
 
     /*
@@ -361,6 +383,11 @@ public class TLC {
     }
     
     public static void runTLC(final String tla, final String cfg, TLC tlc, boolean supressTLCOutput) {
+    	if (TLC.currentInstance != null) {
+    		throw new RuntimeException("Cannot run multiple instances of TLC at once!");
+    	}
+    	TLC.currentInstance = tlc;
+    	
     	final String[] args = new String[] {"-deadlock", "-config", cfg, tla};
     	PrintStream origPrintStream = System.out;
     	if (supressTLCOutput) {
@@ -408,6 +435,7 @@ public class TLC {
         final int errorCode = tlc.process();
         
         System.setOut(origPrintStream);
+        TLC.currentInstance = null;
     }
     
     public boolean hasInvariant(final String inv) {

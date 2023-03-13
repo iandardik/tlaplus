@@ -17,13 +17,87 @@ import java.lang.StringBuilder;
 
 
 public class ExtKripke {
-    private Set<TLCState> initStates = new HashSet<TLCState>();
-    private Set<TLCState> allStates = new HashSet<TLCState>();
-    private Set<TLCState> badStates = new HashSet<TLCState>();
-    private Set<Pair<TLCState,TLCState>> delta = new HashSet<Pair<TLCState,TLCState>>();
-    private Map<Pair<TLCState,TLCState>, Action> deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>();
+    private Set<TLCState> initStates;
+    private Set<TLCState> allStates;
+    private Set<TLCState> badStates;
+    private Set<Pair<TLCState,TLCState>> delta;
+    private Map<Pair<TLCState,TLCState>, Action> deltaActions;
 
-    public ExtKripke() {}
+    public ExtKripke() {
+    	this.initStates = new HashSet<TLCState>();
+        this.allStates = new HashSet<TLCState>();
+        this.badStates = new HashSet<TLCState>();
+        this.delta = new HashSet<Pair<TLCState,TLCState>>();
+        this.deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>();
+    }
+
+    public ExtKripke(final ExtKripke src) {
+    	this.initStates = new HashSet<TLCState>(src.initStates);
+    	this.allStates = new HashSet<TLCState>(src.allStates);
+    	this.badStates = new HashSet<TLCState>(src.badStates);
+    	this.delta = new HashSet<Pair<TLCState,TLCState>>(src.delta);
+    	this.deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>(src.deltaActions);
+    }
+
+    // assumes that the state space of srcClosed is more refined than the state space of srcM.
+    // this assumption is generally valid because the closed system is composed of M, and hence
+    // contains all state vars that are in M.
+    public ExtKripke(final ExtKripke srcM, final ExtKripke srcClosed) {
+    	if (srcM == null) {
+    		throw new RuntimeException("M is null!");
+    	}
+    	if (srcClosed == null) {
+    		throw new RuntimeException("Closed system is null!");
+    	}
+    	if (srcClosed.badStates.size() > 0) {
+    		throw new RuntimeException("Closed system is not safe!");
+    	}
+    	this.initStates = new HashSet<TLCState>();
+    	this.allStates = new HashSet<TLCState>();
+    	this.badStates = new HashSet<TLCState>();
+    	this.delta = new HashSet<Pair<TLCState,TLCState>>();
+    	this.deltaActions = new HashMap<Pair<TLCState,TLCState>, Action>(srcM.deltaActions);
+
+        // add init states that are in both M and the closed system
+    	final Set<TLCState> srcMGoodStates = setMinus(srcM.allStates, srcM.badStates);
+        final Set<TLCState> srcMGoodInitStates = intersection(srcM.initStates, srcMGoodStates);
+    	for (final TLCState s : srcMGoodInitStates) {
+    		if (refinedContainerContainsAbstractState(srcClosed.initStates, s)) {
+    			addInitState(s);
+    		}
+    	}
+    	
+        // we construct the set of bad states as: any good state that is NOT in the closed system
+    	for (final TLCState s : srcMGoodStates) {
+    		if (refinedContainerContainsAbstractState(srcClosed.allStates, s)) {
+    			addGoodState(s);
+    		} else {
+    			addBadState(s);
+    		}
+    	}
+        
+        // only add transitions that are to/from the new state space
+        for (final Pair<TLCState,TLCState> t : srcM.delta) {
+        	if (this.allStates.contains(t.first) && this.allStates.contains(t.second)) {
+        		this.delta.add(t);
+        	}
+        }
+    }
+    
+    private static boolean refinedContainerContainsAbstractState(final Set<TLCState> container, final TLCState abstrState) {
+    	for (final TLCState refinedState : container) {
+    		if (refinedImpliesAbstractState(refinedState, abstrState)) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+    
+    private static boolean refinedImpliesAbstractState(final TLCState refinedState, final TLCState abstrState) {
+    	final Set<Pair<String,String>> refinedKvPairs = new HashSet<>(Utils.extractKeyValuePairsFromState(refinedState));
+    	final Set<Pair<String,String>> abstrKvPairs = new HashSet<>(Utils.extractKeyValuePairsFromState(abstrState));
+    	return refinedKvPairs.containsAll(abstrKvPairs);
+    }
     
     // pre-processing
 
@@ -472,7 +546,9 @@ public class ExtKripke {
         	TLCState src = transition.first;
         	TLCState dst = transition.second;
         	Action act = deltaActions.get(transition);
-        	builder.append("  " + act.getName() + ": (" + format(src.toString()) + ", " + format(dst.toString()) + ")\n");
+        	if (act != null) {
+        		builder.append("  " + act.getName() + ": (" + format(src.toString()) + ", " + format(dst.toString()) + ")\n");
+        	}
         }
         
         //builder.append("\n");
@@ -504,6 +580,11 @@ public class ExtKripke {
         		return this.first.equals(p.first) && this.second.equals(p.second);
         	}
         	return false;
+        }
+        
+        @Override
+        public String toString() {
+        	return "Pair(" + first.toString() + ", " + second.toString() + ")";
         }
     }
     

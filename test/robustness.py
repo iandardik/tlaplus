@@ -72,18 +72,23 @@ def run_tlc_tool(cmd_args, outdir):
     #orig_dir = os.getcwd()
     #os.chdir(outdir)
     result = subprocess.run(cmd_args, text=True, capture_output=True)
-    shutil.rmtree("states/")
+    shutil.rmtree("states/", ignore_errors=True)
     #os.remove(spec_name + "_TTrace*")
     #os.chdir(orig_dir)
     return result
 
 def run_tlc_robust(spec_name, spec, cfg, outdir):
-    cmd_args = ["java", "-jar", tlcian_jar, outdir, spec, cfg]
+    cmd_args = ["java", "-jar", tlcian_jar, "--prop", outdir, spec, cfg]
+    result = run_tlc_tool(cmd_args, outdir)
+    return json.loads(result.stdout)
+
+def run_tlc_robust_env(spec1_name, spec1, cfg1, spec2_name, spec2, cfg2, outdir):
+    cmd_args = ["java", "-jar", tlcian_jar, "--env", outdir, spec1, cfg1, spec2, cfg2]
     result = run_tlc_tool(cmd_args, outdir)
     return json.loads(result.stdout)
 
 def run_tlc_robust_compare(spec1_name, spec1, cfg1, spec2_name, spec2, cfg2, outdir):
-    cmd_args = ["java", "-jar", tlcian_jar, outdir, spec1, cfg1, spec2, cfg2]
+    cmd_args = ["java", "-jar", tlcian_jar, "--cmp", outdir, spec1, cfg1, spec2, cfg2]
     result = run_tlc_tool(cmd_args, outdir)
     return json.loads(result.stdout)
 
@@ -132,7 +137,7 @@ def run_robustness(args):
     print("Diff rep grouped by action:")
     spec_is_safe = jsonResult["spec_is_safe"]
     if spec_is_safe == "true":
-        print("Spec is robust against ANY behavior or environment")
+        print(spec_name + " is robust against ANY behavior or environment")
     else:
         diff_rep_states_empty = jsonResult["diff_rep_states_empty"]
         if diff_rep_states_empty == "true":
@@ -150,7 +155,48 @@ def run_robustness(args):
                 print_constraint(const_constr, non_const_constr, sorts_map_file)
 
 def run_env(args):
-    print("Not supported yet")
+    spec = args.spec
+    spec_name = get_spec_name(spec)
+    cfg = get_cfg(spec_name, args.config)
+    closed = args.spec2
+    closed_name = get_spec_name(closed)
+    closed_cfg = get_cfg(closed_name, args.config2)
+    outdir = args.outdir
+    jsonResult = run_tlc_robust_env(spec_name, spec, cfg, closed_name, closed, closed_cfg, outdir)
+
+    assert jsonResult['comparison_type'] == 'spec_to_env'
+    assert jsonResult['spec_name'] == spec_name
+
+    if "diff_rep_state_formula_error" in jsonResult:
+        err_msg = jsonResult["diff_rep_state_formula_error"]
+        print("Found error while calculating robustness: " + err_msg)
+
+    #env_is_safe = jsonResult["env_is_safe"]
+    #if env_is_safe == "false":
+        #print("The spec is not safe wrt. to the environment")
+        #return
+
+    # there is no safety/error boundary if at least one spec has no erroneous behaviors
+    print("TLA+ Module: " + spec_name)
+    print("Diff rep grouped by action:")
+    spec_is_safe = jsonResult["spec_is_safe"]
+    if spec_is_safe == "true":
+        print(spec_name + " is robust against ANY behavior or environment")
+    else:
+        diff_rep_states_empty = jsonResult["diff_rep_states_empty"]
+        if diff_rep_states_empty == "true":
+            print("the diff rep for eta(" + spec_name + ") is empty")
+        else:
+            group_names = jsonResult['group_names']
+            for group in group_names:
+                diff_rep_file = jsonResult['diff_rep_file_' + group]
+                sorts_map_file = jsonResult['sorts_map_file_'+group] if ('sorts_map_file_'+group) in jsonResult else None
+                const_constr = const_constraint(jsonResult, 'const_value_constraint_' + group)
+                non_const_constr = non_const_constraint(jsonResult, outdir, 'separator_file_' + group)
+                print()
+                print(group + ":")
+                print("Safety boundary representation: " + diff_rep_file)
+                print_constraint(const_constr, non_const_constr, sorts_map_file)
 
 def run_comparison(args):
     spec1 = args.spec

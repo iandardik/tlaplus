@@ -35,7 +35,9 @@ WaterSafeTempProp == [][WaterSafeTemp]_vars
 
 TypeOK ==
     /\ brewed \in SUBSET {"coffee", "tea", "hot_chocolate"}
-    /\ temp \in Nat
+    \*/\ temp \in Nat
+    \*/\ temp \in 0..230
+    /\ temp \in {0,70,212,215}
 
 BrewOneItem == \A i1,i2 \in brewed : i1 = i2
 

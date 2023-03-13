@@ -4,8 +4,10 @@ package util;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 
+import tlc2.TLC;
 import tlc2.tool.Defns;
 import tlc2.tool.TLCState;
 import tlc2.tool.distributed.InternRMI;
@@ -80,11 +82,11 @@ public final class UniqueString implements Serializable
      * variable in {@link TLCState}.  If this string is the name of an operator
      * definition, this is the location of this definition in {@link Defns}.
      */
-    private int loc = -1;
+    private Map<String, Integer> locMap;
 
     // SZ 10.04.2009: removed the getter method
     // since it is only needed in Spec#processSpec and the setter is called from there
-    private static int varCount;
+    private static Map<String, Integer> varCountMap;
 
     
     /**
@@ -101,7 +103,7 @@ public final class UniqueString implements Serializable
     public static void initialize()
     {
         internTbl = new InternTable(1024);
-        varCount = 0;
+        varCountMap = new HashMap<>();
     }
 
     /**
@@ -113,6 +115,7 @@ public final class UniqueString implements Serializable
     {
         this.s = str;
         this.tok = tok;
+        this.locMap = new HashMap<>();
     }
 
     /**
@@ -124,7 +127,7 @@ public final class UniqueString implements Serializable
     private UniqueString(String str, int tok, int loc)
     {
         this(str, tok);
-        this.loc = loc;
+        this.locMap.put(TLC.getTlcKey(), loc);
     }
 
     /**
@@ -133,7 +136,8 @@ public final class UniqueString implements Serializable
      */
     public static void setVariableCount(int varCount)
     {
-        UniqueString.varCount = varCount;
+    	final String tlcKey = TLC.getTlcKey();
+        UniqueString.varCountMap.put(tlcKey, varCount);
         // SZ 10.04.2009: changed the method signature from setVariables(UniqueString[])
         // to setVariableCount(int), since the method is effectively only responsible
         // for storing this information in the static field of this class.
@@ -147,9 +151,22 @@ public final class UniqueString implements Serializable
      * Returns the location of this variable in a state, if the name is a
      * variable.  Otherwise, returns -1.
      */
+    public int getVarLoc(final String tlcKey)
+    {
+    	final Integer rawLoc = this.locMap.get(tlcKey);
+    	final int loc = rawLoc == null ? -1 : rawLoc;
+    	final Integer rawVC = UniqueString.varCountMap.get(tlcKey);
+    	final int vc = rawVC == null ? 0 : rawVC;
+        return (loc < vc) ? loc : -1;
+    }
+
+    /**
+     * Returns the location of this variable in a state, if the name is a
+     * variable.  Otherwise, returns -1.
+     */
     public int getVarLoc()
     {
-        return (this.loc < varCount) ? this.loc : -1;
+    	return getVarLoc(TLC.getTlcKey());
     }
 
     /**
@@ -158,7 +175,11 @@ public final class UniqueString implements Serializable
      */
     public int getDefnLoc()
     {
-        return (this.loc < varCount) ? -1 : this.loc;
+    	final Integer rawLoc = this.locMap.get(TLC.getTlcKey());
+    	final int loc = rawLoc == null ? -1 : rawLoc;
+    	final Integer rawVC = UniqueString.varCountMap.get(TLC.getTlcKey());
+    	final int vc = rawVC == null ? 0 : rawVC;
+        return (loc < vc) ? -1 : loc;
     }
 
     /**
@@ -170,7 +191,7 @@ public final class UniqueString implements Serializable
      */
     public void setLoc(int loc)
     {
-        this.loc = loc;
+        this.locMap.put(TLC.getTlcKey(), loc);
     }
 
     /**

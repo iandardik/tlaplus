@@ -21,6 +21,7 @@ public class Robustness {
 	
 	private static final String COMPARISON_TYPE = "comparison_type";
 	private static final String SPEC_TO_PROPERTY = "spec_to_property";
+	private static final String SPEC_TO_ENV = "spec_to_env";
 	private static final String SPEC_TO_SPEC = "spec_to_spec";
 	
 	private static final String SPEC_NAME = "spec_name";
@@ -33,6 +34,7 @@ public class Robustness {
 	private static final String SPEC2_SAT_SPEC1_CFG = "spec2_sat_spec1_cfg";
 	
 	private static final String SPEC_IS_SAFE = "spec_is_safe";
+	private static final String CLOSED_SYSTEM_IS_SAFE = "closed_system_is_safe";
 	private static final String SPEC1_IS_SAFE = "spec1_is_safe";
 	private static final String SPEC2_IS_SAFE = "spec2_is_safe";
 	private static final String TRUE = "true";
@@ -52,14 +54,17 @@ public class Robustness {
     	// TODO add functionality for compareSpecToEnvironment
     	Map<String,String> jsonStrs = new HashMap<>();
     	Map<String,List<String>> jsonLists = new HashMap<>();
-    	if (args.length == 3) {
+    	if (args.length == 4 && args[0].equals("--prop")) {
     		compareSpecToProperty(args, jsonStrs, jsonLists);
     	}
-    	else if (args.length == 5) {
+    	else if (args.length == 6 && args[0].equals("--env")) {
+    		compareSpecToEnvironment(args, jsonStrs, jsonLists);
+    	}
+    	else if (args.length == 6 && args[0].equals("--cmp")) {
     		compareSpecs(args, jsonStrs, jsonLists);
     	}
     	else {
-    		System.out.println("usage: tlc-ian <output_loc> <spec1> <cfg1> [<spec2> <cfg2>]");
+    		System.out.println("usage: tlc-ian <flag> <output_loc> <spec1> <cfg1> [<spec2> <cfg2>]\nflag=--prop|--env|--cmp");
     	}
     	System.out.println(Utils.asJson(jsonStrs, jsonLists));
     	System.exit(0);
@@ -67,37 +72,58 @@ public class Robustness {
     
     // M_err_rep: states that are in (M_err \cap P) but MAY leave P in one step
     private static void compareSpecToProperty(String[] args, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
-    	final String outputLoc = args[0] + "/";
-    	final String tla = args[1];
-    	final String cfg = args[2];
+    	final String outputLoc = args[1] + "/";
+    	final String tla = args[2];
+    	final String cfg = args[3];
     	
     	// initialize and run TLC
-    	TLC tlc = new TLC();
+    	TLC tlc = new TLC("cmp");
     	TLC.runTLC(tla, cfg, tlc);
 
     	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_PROPERTY);
     	jsonStrs.put(SPEC_NAME, tlc.getSpecName());
     	
     	// compute the representation for beh(P) - \eta(spec,P)
-    	computePropertyDiffRep(tla, tlc, outputLoc, jsonStrs, jsonLists);
+    	computePropertyDiffRep(tla, tlc, tlc.getKripke(), outputLoc, jsonStrs, jsonLists);
     }
-    
-    private static void compareSpecToEnvironment(String[] args, Map<String,String> jsonOutput, Map<String,List<String>> jsonLists) {
-    	// TODO
-    	// M_err_rep: states that are in (M_err \cap E) but MAY leave E in one step
+
+	// M_err_rep: states that are in (M_err \cap E) but MAY leave E in one step
+    private static void compareSpecToEnvironment(String[] args, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
+    	final String outputLoc = args[1] + "/";
+    	final String tlaM = args[2];
+    	final String cfgM = args[3];
+    	final String tlaClosed = args[4];
+    	final String cfgClosed = args[5];
+    	assert(!tlaM.equals(tlaClosed));
+    	
+    	// run TLC for M and the closed system
+    	TLC tlcM = new TLC("M");
+    	TLC tlcClosed = new TLC("closed");
+    	TLC.runTLC(tlaM, cfgM, tlcM);
+    	TLC.runTLC(tlaClosed, cfgClosed, tlcClosed);
+    	final ExtKripke kripkeM = tlcM.getKripke();
+    	final ExtKripke kripkeClosed = tlcClosed.getKripke();
+    	final ExtKripke kripkeCmp = new ExtKripke(kripkeM, kripkeClosed);
+    	
+    	computePropertyDiffRep(tlaM, tlcM, kripkeCmp, outputLoc, jsonStrs, jsonLists);
+    	
+    	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_ENV);
+    	jsonStrs.put(SPEC_NAME, tlcM.getSpecName());
+    	jsonStrs.put(SPEC_IS_SAFE, tlcM.getKripke().isSafe() ? TRUE : FALSE);
+    	jsonStrs.put(CLOSED_SYSTEM_IS_SAFE, tlcClosed.getKripke().isSafe() ? TRUE : FALSE);
     }
     
     private static void compareSpecs(String[] args, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
-    	final String outputLoc = args[0] + "/";
-    	final String tla1 = args[1];
-    	final String cfg1 = args[2];
-    	final String tla2 = args[3];
-    	final String cfg2 = args[4];
+    	final String outputLoc = args[1] + "/";
+    	final String tla1 = args[2];
+    	final String cfg1 = args[3];
+    	final String tla2 = args[4];
+    	final String cfg2 = args[5];
     	assert(!tla1.equals(tla2));
     	
     	// initialize and run TLC
-    	TLC tlc1 = new TLC();
-    	TLC tlc2 = new TLC();
+    	TLC tlc1 = new TLC("spec1");
+    	TLC tlc2 = new TLC("spec2");
     	TLC.runTLC(tla1, cfg1, tlc1);
     	TLC.runTLC(tla2, cfg2, tlc2);
     	
@@ -122,8 +148,8 @@ public class Robustness {
     	computeComparisonDiffRep(tlc1, tlc2, outputLoc, jsonStrs, jsonLists);
     }
     
-    private static void computePropertyDiffRep(final String tlaFile, final TLC tlc, final String outputLoc, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
-    	final ExtKripke kripke = tlc.getKripke();
+    private static void computePropertyDiffRep(final String tlaFile, final TLC tlc, final ExtKripke kripke, final String outputLoc,
+    		Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	jsonStrs.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     	
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
@@ -137,7 +163,7 @@ public class Robustness {
         	// a TypeOK is required to gather the info we need to create a sep.fol file
         	if (tlc.hasInvariant(TYPE_OK)) {
             	// compute the entire state space
-            	final TLC tlcTypeOK = new TLC();
+            	final TLC tlcTypeOK = new TLC("PropDiffRepTypeOK");
             	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
             	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
         	}
@@ -189,7 +215,7 @@ public class Robustness {
         	final boolean bothHaveTypeOK = tlc1.hasInvariant(TYPE_OK) && tlc2.hasInvariant(TYPE_OK);
         	if (bothHaveTypeOK) {
             	// compute the entire state space
-            	final TLC tlcTypeOK = new TLC();
+            	final TLC tlcTypeOK = new TLC("CmpTypeOK");
             	runTLCExtractStateSpace(tlc1, tlc2, outputLoc, tlcTypeOK);
             	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
         	}
@@ -230,7 +256,7 @@ public class Robustness {
     	final String tag = "ErrPre";
     	final String specName1 = createErrPre(tag, tlc1, tla1, cfg1, vars1, outputLoc, jsonOutput);
     	final String specName2 = createErrPre(tag, tlc2, tla2, cfg2, vars2, outputLoc, jsonOutput);
-    	final String combineSpecName = combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
+    	final String combineSpecName = combineSpecTLA(tag, specName1, specName2, vars1, vars2, outputLoc);
         jsonOutput.put(COMBINED_ERR_PRE_TLA, combineSpecName);
     }
     
@@ -252,7 +278,7 @@ public class Robustness {
     	final String tag = "ErrPost";
     	final String specName1 = createErrPost(tag, tlc1, tla1, cfg1, vars1, outputLoc, jsonOutput);
     	final String specName2 = createErrPost(tag, tlc2, tla2, cfg2, vars2, outputLoc, jsonOutput);
-    	final String combineSpecName = combineSpec(tag, specName1, specName2, vars1, vars2, outputLoc);
+    	final String combineSpecName = combineSpecTLA(tag, specName1, specName2, vars1, vars2, outputLoc);
         jsonOutput.put(COMBINED_ERR_POST_TLA, combineSpecName);
     }
     
@@ -264,7 +290,50 @@ public class Robustness {
     	return kripkeToTLA(tag, tlc, errPostKripke, tla, cfg, outputLoc, strongFairness, vars);
     }
     
-    private static String combineSpec(final String tag, final String specName1, final String specName2, final Set<String> vars1, final Set<String> vars2, final String outputLoc) {
+    private static String envAsPropertyTLA(final String specNameM, final String specNameEnv, final Set<String> varsM, final Set<String> varsEnv, final String outputLoc) {
+        final String specName = "EnvAsProp";
+        final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
+        final String endModule = "=============================================================================";
+        
+        ArrayList<String> varNameList1 = Utils.toArrayList(varsM);
+        ArrayList<String> varNameList2 = Utils.toArrayList(varsEnv);
+        
+        varsM.addAll(varsEnv);
+        ArrayList<String> combineVarNameList = Utils.toArrayList(varsM);
+        
+        final String varList = String.join(", ", combineVarNameList);
+        final String varsDecl = "VARIABLES " + varList;
+        
+        final String spec1 = "S1 == INSTANCE " + specNameM + " WITH " + Utils.instanceWithList(varNameList1);
+        final String spec2 = "S2 == INSTANCE " + specNameEnv + " WITH " + Utils.instanceWithList(varNameList2);
+        final String spec1Def = "SpecM == S1!Spec"; // TODO implicit assumption that spec defs will be called Spec
+        final String spec2Def = "SpecEnv == S2!Spec";
+
+        StringBuilder builder = new StringBuilder();
+        builder.append(specDecl).append("\n");
+        builder.append(varsDecl).append("\n");
+        builder.append("\n");
+        builder.append(spec1).append("\n");
+        builder.append("\n");
+        builder.append(spec2).append("\n");
+        builder.append("\n");
+        builder.append(spec1Def).append("\n");
+        builder.append(spec2Def).append("\n");
+        builder.append(endModule).append("\n");
+        builder.append("\n");
+        
+        final String name = outputLoc + specName + ".tla";
+        Utils.writeFile(name, builder.toString());
+        
+        return name;
+    }
+    
+    private static ArrayList<String> getVarNamesInSpec(final TLC tlc) {
+        FastTool ft = (FastTool) tlc.tool;
+        return Utils.toArrayList(ft.getVarNames());
+    }
+    
+    private static String combineSpecTLA(final String tag, final String specName1, final String specName2, final Set<String> vars1, final Set<String> vars2, final String outputLoc) {
         final String specName = "Combined_" + tag;
         final String varsSeqName = "vars_" + tag;
         final String specDecl = "--------------------------- MODULE " + specName + " ---------------------------";
@@ -281,7 +350,7 @@ public class Robustness {
         
         final String spec1 = "S1 == INSTANCE " + specName1 + " WITH " + Utils.instanceWithList(varNameList1);
         final String spec2 = "S2 == INSTANCE " + specName2 + " WITH " + Utils.instanceWithList(varNameList2);
-        final String spec1Def = "Spec1 == S1!Spec";
+        final String spec1Def = "Spec1 == S1!Spec"; // TODO implicit assumption that spec defs will be called Spec
         final String spec2Def = "Spec2 == S2!Spec";
 
         StringBuilder builder = new StringBuilder();
