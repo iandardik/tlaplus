@@ -120,7 +120,8 @@ public class Robustness {
     	}
     	
     	final ExtKripke kripkeCmp = new ExtKripke(kripkeM, kripkeClosed);
-    	computeEnvDiffRep(tlaM, tlcM, kripkeCmp, outputLoc, jsonStrs, jsonLists);
+    	//computeEnvDiffRep(tlaM, tlcM, kripkeCmp, outputLoc, jsonStrs, jsonLists);
+    	computeSpecDiffRepShaded(tlaM, tlcM, kripkeCmp, outputLoc, jsonStrs, jsonLists);
     	
     	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_ENV);
     	jsonStrs.put(SPEC_NAME, tlcM.getSpecName());
@@ -201,6 +202,31 @@ public class Robustness {
             	final TLC tlcTypeOK = new TLC("PropDiffRepTypeOK");
             	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
             	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
+        	}
+        	else {
+            	jsonStrs.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);
+        	}
+    	}
+    }
+    
+    private static void computeSpecDiffRepShaded(final String tlaFile, final TLC tlc, final ExtKripke kripke, final String outputLoc,
+    		Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
+    	jsonStrs.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
+    	
+    	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
+    	final Set<String> safetyShaded = Utils.stateSetToStringSet(kripke.robustSafetyShaded());
+		final Map<String, Set<String>> shadedByGroup = kripke.robustSafetyShadedPerAction();
+    	RobustDiffRepShaded diffRep = new RobustDiffRepShaded(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyShaded, shadedByGroup, jsonStrs, jsonLists);
+    	
+    	if (!kripke.isSafe()) {
+        	diffRep.writeShaded();
+        	
+        	// a TypeOK is required to gather the info we need to create a sep.fol file
+        	if (tlc.hasInvariant(TYPE_OK)) {
+            	// compute the entire state space
+            	final TLC tlcTypeOK = new TLC("PropDiffRepTypeOK");
+            	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
+            	diffRep.writeShadedFOLSeparatorFile(kripke, tlcTypeOK);
         	}
         	else {
             	jsonStrs.put(DIFF_REP_STATE_FORMULA_ERROR, MISSING_TYPEOK);

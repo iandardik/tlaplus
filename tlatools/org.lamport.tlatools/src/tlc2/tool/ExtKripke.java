@@ -116,6 +116,14 @@ public class ExtKripke {
     	return this.allStates;
     }
     
+    public Set<TLCState> badStates() {
+    	return this.badStates;
+    }
+    
+    public Set<TLCState> envStates() {
+    	return this.envStates;
+    }
+    
     public ExtKripke createErrPre() {
     	Set<TLCState> errStates = notAlwaysNotPhiStates();
     	Set<Pair<TLCState,TLCState>> deltaErrSinks = createDeltaWithErrorSinks(badStates, delta);
@@ -178,6 +186,54 @@ public class ExtKripke {
     		elem = e;
     	}
     	return elem;
+    }
+    
+    // returns: allStates - badStates - envStates
+    public Set<TLCState> robustSafetyShaded() {
+    	final Set<TLCState> goodStates = setMinus(this.allStates, this.badStates);
+    	return setMinus(goodStates, this.envStates);
+    }
+    
+    // TODO parameterize on "shaded" set and "bad" set
+    public Map<String, Set<String>> robustSafetyShadedPerAction() {
+    	final Set<TLCState> safetyShaded = robustSafetyShaded();
+    	Map<String, Set<String>> safetyShadedPerAction = new HashMap<>();
+    	Map<String, Set<String>> badShadedPerAction = new HashMap<>();
+    	
+    	// group states by actions which are safe in the state
+    	for (final TLCState s : safetyShaded) {
+    		final String shadedState = Utils.normalizeStateString(s.toString());
+    		// look at succ(s) to see which actions are safe from s
+    		for (final TLCState t : succ(s)) {
+    			final Pair<TLCState,TLCState> transition = new Pair<>(s,t);
+    			final Action act = this.deltaActions.get(transition);
+    			Utils.assertNotNull(act, "Failed to lookup transition action!");
+    			final String actionName = act.getName().toString();
+    			if (this.badStates.contains(t)) {
+    				// store bad states for this action
+    				if (!badShadedPerAction.containsKey(actionName)) {
+    					badShadedPerAction.put(actionName, new HashSet<>());
+    				}
+    				badShadedPerAction.get(actionName).add(shadedState);
+    			}
+    			else {
+    				// store good states for this action
+    				if (!safetyShadedPerAction.containsKey(actionName)) {
+    					safetyShadedPerAction.put(actionName, new HashSet<>());
+    				}
+    				safetyShadedPerAction.get(actionName).add(shadedState);
+    			}
+    		}
+    	}
+    	
+    	// remove any states from action-groups that have an action that leads to a bad state
+    	for (final String act : badShadedPerAction.keySet()) {
+    		if (safetyShadedPerAction.containsKey(act)) {
+    			final Set<String> safetyShadedMinusBad = setMinus(safetyShadedPerAction.get(act), badShadedPerAction.get(act));
+    			safetyShadedPerAction.put(act, safetyShadedMinusBad);
+    		}
+    	}
+    	return safetyShadedPerAction;
     }
     
     public Set<TLCState> safetyBoundary() {
