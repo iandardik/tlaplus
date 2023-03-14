@@ -59,6 +59,7 @@ gen_test_suite_env "${test_dir_coff}" "CoffeeTeaSmall" "ClosedCTH"
 
 voting_tests=("Voting" "VotingEOCannotCfm" "SecureVoting")
 gen_test_suite "${test_dir_voting}" "${voting_tests[@]}"
+gen_test_suite_env "${test_dir_voting}" "Voting" "ClosedVoting"
 
 therac_tests=("Therac25" "Therac20")
 gen_test_suite "${test_dir_therac}" "${therac_tests[@]}"
