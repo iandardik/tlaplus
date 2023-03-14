@@ -151,12 +151,12 @@ def run_robustness(args):
         else:
             group_names = jsonResult['group_names']
             for group in group_names:
+                print()
+                print(group + ":")
                 diff_rep_file = jsonResult['diff_rep_file_' + group]
                 sorts_map_file = jsonResult['sorts_map_file_'+group] if ('sorts_map_file_'+group) in jsonResult else None
                 const_constr = const_constraint(jsonResult, 'const_value_constraint_' + group)
                 non_const_constr = non_const_constraint(jsonResult, outdir, 'separator_file_' + group)
-                print()
-                print(group + ":")
                 print("Safety boundary representation: " + diff_rep_file)
                 print_constraint(const_constr, non_const_constr, sorts_map_file)
 
@@ -195,12 +195,12 @@ def run_env(args):
         else:
             group_names = jsonResult['group_names']
             for group in group_names:
+                print()
+                print(group + ":")
                 diff_rep_file = jsonResult['diff_rep_file_' + group]
                 sorts_map_file = jsonResult['sorts_map_file_'+group] if ('sorts_map_file_'+group) in jsonResult else None
                 const_constr = const_constraint(jsonResult, 'const_value_constraint_' + group)
                 non_const_constr = non_const_constraint(jsonResult, outdir, 'separator_file_' + group)
-                print()
-                print(group + ":")
                 print("Safety boundary representation: " + diff_rep_file)
                 print_constraint(const_constr, non_const_constr, sorts_map_file)
 
@@ -261,12 +261,12 @@ def run_comparison(args):
             print("Diff rep grouped by action:")
             group_names = jsonResult['group_names1']
             for group in group_names:
+                print()
+                print(group + ":")
                 diff_rep_file = jsonResult["diff_rep_file1_" + group]
                 sorts_map_file = jsonResult['sorts_map_file1_'+group] if ('sorts_map_file1_'+group) in jsonResult else None
                 const_constr = const_constraint(jsonResult, "const_value_constraint1_" + group)
                 non_const_constr = non_const_constraint(jsonResult, outdir, "separator1_file_" + group)
-                print()
-                print(group + ":")
                 print("Safety boundary representation: " + diff_rep_file)
                 print_constraint(const_constr, non_const_constr, sorts_map_file)
         else:
