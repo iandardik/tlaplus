@@ -150,6 +150,10 @@ public class RobustDiffRep {
     		final String sortsMapFileKey = sortsMapFileKeyBase + UNDERSCORE + groupName;
         	final String separatorFile = buildAndWriteSeparatorFOL(posExamples, negExamples, varTypes, nonConstValueVars, nonConstValueTypes,
         			valueToConstantMap, this.specName, groupName, this.outputLocation);
+        	if (separatorFile == null) {
+        		// this is a really inelegant way to not write the FOL sep file if there aren't any negative examples
+        		return;
+        	}
         	final String sortsMapFile = writeSortsMap(nonConstValueTypes, this.specName, groupName, this.outputLocation);
         	this.jsonStrs.put(separatorFileKey, separatorFile);
         	this.jsonStrs.put(sortsMapFileKey, sortsMapFile);
@@ -231,6 +235,7 @@ public class RobustDiffRep {
     	builder.append("\n\n");
     	
     	// models
+    	boolean atLeastOneNegExample = false;
     	Set<String> posModels = new HashSet<>();
     	for (String s : posExamples) {
     		final String pos = toSeparatorModel(s, "+", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
@@ -240,8 +245,14 @@ public class RobustDiffRep {
     	for (String s : negExamples) {
     		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
     		if (!posModels.contains(neg.replace('-', '+'))) {
+    			atLeastOneNegExample = true;
     			builder.append(neg);
     		}
+    	}
+
+		// this is a really inelegant way to not write the FOL sep file if there aren't any negative examples
+    	if (!atLeastOneNegExample) {
+    		return null;
     	}
     	
     	final String separatorFile = specName + UNDERSCORE + groupName + ".fol";

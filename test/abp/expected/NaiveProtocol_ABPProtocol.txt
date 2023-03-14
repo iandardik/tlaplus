@@ -51,4 +51,3 @@ Safety boundary rep formula (with sort definitions):
 /\ senderBit = 0
 /\ receiverState = "waitRec"
 /\ receiverBit = 0
-/\ "Ian" # "Kevin"
