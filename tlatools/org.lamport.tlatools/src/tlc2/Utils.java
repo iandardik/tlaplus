@@ -23,6 +23,20 @@ public class Utils {
 	private static final String LSQBRACE = "[";
 	private static final String RSQBRACE = "]";
 
+	
+	/* Because assert() doesn't seem to work */
+	
+	public static void assertTrue(final boolean condition, final String msg) {
+		if (!condition) {
+			throw new RuntimeException(msg);
+		}
+	}
+	public static void assertNotNull(final Object obj, final String msg) {
+		if (obj == null) {
+			throw new RuntimeException("Null assertion failed with message: " + msg);
+		}
+	}
+	
 
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(TLCState tlaState) {
     	return extractKeyValuePairsFromState(normalizeStateString(tlaState.toString()));
