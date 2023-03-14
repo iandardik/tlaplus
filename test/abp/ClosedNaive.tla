@@ -52,9 +52,8 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
-TypeOK == Protocol!TypeOK
+TypeOK == Protocol!TypeOK /\ Channel!TypeOK
 
-\*MessageReceived == Protocol!MessageReceived
-MessageReceived == (senderState = "waitInput" /\ receiverState = "output") => (input = message \/ output = message)
+MessageReceived == Protocol!MessageReceived
 
 =============================================================================

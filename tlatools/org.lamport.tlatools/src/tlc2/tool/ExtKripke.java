@@ -199,11 +199,21 @@ public class ExtKripke {
     	return boundaryPerAction(safetyBoundary());
     }
     
+    // runs under the assumption that: this.envStates \cap this.badStates = \emptyset
     // returns a map of (action name) -> (robust safety boundary for the action)
     public Map<String, Set<String>> robustSafetyBoundaryPerAction() {
+    	// nonEnvStates = goodStates \cap envStates
+    	// we have by assumption: envStates \subseteq goodStates
+    	// so: badStates \subseteq nonEnvStates
     	final Set<TLCState> nonEnvStates = setMinus(this.allStates, this.envStates);
+    	final Set<TLCState> goodNonEnvStates = setMinus(nonEnvStates, this.badStates);
     	final Set<TLCState> envBoundaryStates = calculateBoundary(BoundaryType.safety, nonEnvStates);
-    	Map<String, Set<String>> leaveEnv = boundaryPerAction(envBoundaryStates, nonEnvStates);
+    	Map<String, Set<String>> leaveEnv = boundaryPerAction(envBoundaryStates, goodNonEnvStates);
+    	
+    	// so far we have calculated (state,action) pairs such that there EXISTS a world in which the action
+    	// safely leaves the environment. however, we want (state,action) pairs in which the action ALWAYS
+    	// safely leaves the environment. we do this by removing any states at the safety boundary for the
+    	// given action.
     	final Map<String, Set<String>> safetyBoundary = safetyBoundaryPerAction();
     	Set<String> keysToRemove = new HashSet<>();
     	for (final String act : leaveEnv.keySet()) {

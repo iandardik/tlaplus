@@ -2,12 +2,13 @@
 
 MessageValues == {"Ian", "David", "Kevin"}
 
+VARIABLES inOut
 VARIABLES senderState, senderBit, input, receiverState, receiverBit, output
 VARIABLES transState, message, ackState
 
-protocolVars == <<senderState, senderBit, input, receiverState, receiverBit, output>>
+protocolVars == <<senderState, senderBit, input, receiverState, receiverBit, output, inOut>>
 channelVars == <<transState, message, ackState>>
-vars == <<senderState, senderBit, input, receiverState, receiverBit, output, transState, message, ackState>>
+vars == <<senderState, senderBit, input, receiverState, receiverBit, output, transState, message, ackState, inOut>>
 
 Protocol == INSTANCE ABPProtocol
                 WITH senderState <- senderState,
@@ -15,7 +16,8 @@ Protocol == INSTANCE ABPProtocol
                      input <- input,
                      receiverState <- receiverState,
                      receiverBit <- receiverBit,
-                     output <- output
+                     output <- output,
+                     inOut <- inOut
 
 Channel == INSTANCE PerfectChannel
                WITH transState <- transState,
@@ -54,6 +56,8 @@ Spec == Init /\ [][Next]_vars
 
 TypeOK == Protocol!TypeOK /\ Channel!TypeOK
 
-MessageReceived == Protocol!MessageReceived
+Alternate == Protocol!Alternate
+
+InOutMaxChange == Protocol!InOutMaxChange
 
 =============================================================================

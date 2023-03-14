@@ -49,6 +49,18 @@ Spec == Init /\ [][Next]_vars
 
 TypeOK == Sender!TypeOK /\ Receiver!TypeOK
 
+\*MessageReceived == (receiverState = "output") => (output = input)
 MessageReceived == (senderState = "waitInput" /\ receiverState = "output") => (output = input)
+
+(*
+\* for: MessageReceived == (receiverState = "output") => (output = input)
+Cex ==
+  ~(/\ input = "David"
+    /\ receiverBit = 0
+    /\ receiverState = "waitRec"
+    /\ senderState = "waitInput"
+    /\ output = "Ian"
+    /\ senderBit = 1)
+*)
 
 =============================================================================

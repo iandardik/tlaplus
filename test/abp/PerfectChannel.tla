@@ -41,8 +41,8 @@ Next ==
 Spec == Init /\ [][Next]_vars
 
 TypeOK ==
-    /\ transState \in {"send", "receive"}
+    /\ transState \in {"send", "receive0", "receive1"}
     /\ message \in MessageValues
-    /\ ackState \in {"ack", "getAck"}
+    /\ ackState \in {"ack", "getAck0", "getAck1"}
 
 =============================================================================

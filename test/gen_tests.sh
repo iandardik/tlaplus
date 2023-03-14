@@ -66,4 +66,6 @@ gen_test_suite "${test_dir_therac}" "${therac_tests[@]}"
 fixed_mutex_tests=("MutexExample")
 gen_test_suite "${test_dir_fixed_mutex}" "${fixed_mutex_tests[@]}"
 
+abp_tests=("ABPProtocol" "NaiveProtocol")
+gen_test_suite "${test_dir_abp}" "${abp_tests[@]}"
 gen_test_suite_env "${test_dir_abp}" "NaiveProtocol" "ClosedNaive"

@@ -1,57 +1,60 @@
 ------------------------------- MODULE ClosedNaive -------------------------------
 
-VARIABLES inOut
-VARIABLES senderState, senderBit, receiverState, receiverBit
-VARIABLES transState, ackState
+MessageValues == {"Ian", "David", "Kevin"}
 
-protocolVars == <<senderState, senderBit, receiverState, receiverBit, inOut>>
-channelVars == <<transState, ackState>>
-vars == <<senderState, senderBit, receiverState, receiverBit, inOut, transState, ackState>>
+VARIABLES senderState, senderBit, input, receiverState, receiverBit, output
+VARIABLES transState, message, ackState
+
+protocolVars == <<senderState, senderBit, input, receiverState, receiverBit, output>>
+channelVars == <<transState, message, ackState>>
+vars == <<senderState, senderBit, input, receiverState, receiverBit, output, transState, message, ackState>>
 
 Protocol == INSTANCE NaiveProtocol
-                WITH inOut <- inOut,
-                     senderState <- senderState,
+                WITH senderState <- senderState,
                      senderBit <- senderBit,
+                     input <- input,
                      receiverState <- receiverState,
-                     receiverBit <- receiverBit
+                     receiverBit <- receiverBit,
+                     output <- output
 
 Channel == INSTANCE PerfectChannel
                WITH transState <- transState,
+                    message <- message,
                     ackState <- ackState
 
 
 Init == Protocol!Init /\ Channel!Init
 
-Input == Protocol!Input /\ UNCHANGED channelVars
+Input(m) == Protocol!Input(m) /\ UNCHANGED channelVars
 Output == Protocol!Output /\ UNCHANGED channelVars
 
-Send0 == Protocol!Send0 /\ Channel!Send0
-Send1 == Protocol!Send1 /\ Channel!Send1
-Receive0 == Protocol!Receive0 /\ Channel!Receive0
-Receive1 == Protocol!Receive1 /\ Channel!Receive1
+Send0(m) == Protocol!Send0(m) /\ Channel!Send0(m)
+Send1(m) == Protocol!Send1(m) /\ Channel!Send1(m)
+Receive0(m) == Protocol!Receive0(m) /\ Channel!Receive0(m)
+Receive1(m) == Protocol!Receive1(m) /\ Channel!Receive1(m)
 Ack0 == Protocol!Ack0 /\ Channel!Ack0
 Ack1 == Protocol!Ack1 /\ Channel!Ack1
 GetAck0 == Protocol!GetAck0 /\ Channel!GetAck0
 GetAck1 == Protocol!GetAck1 /\ Channel!GetAck1
 
 Next ==
-    \/ Input
-    \/ Output
-    \/ Send0
-    \/ Send1
-    \/ GetAck0
-    \/ GetAck1
-    \/ Receive0
-    \/ Receive1
-    \/ Ack0
-    \/ Ack1
+    \E m \in MessageValues :
+        \/ Input(m)
+        \/ Send0(m)
+        \/ Send1(m)
+        \/ GetAck0
+        \/ GetAck1
+        \/ Receive0(m)
+        \/ Receive1(m)
+        \/ Output
+        \/ Ack0
+        \/ Ack1
 
 Spec == Init /\ [][Next]_vars
 
-TypeOK == Protocol!TypeOK
+TypeOK == Protocol!TypeOK /\ Channel!TypeOK
 
-Alternate == Protocol!Alternate
-
-MaxTwo == Protocol!MaxTwo
+\*MessageReceived == Protocol!MessageReceived
+MessageReceived == (senderState = "waitInput" /\ receiverState = "output") => (input = message \/ output = message)
 
 =============================================================================

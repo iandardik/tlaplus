@@ -1,23 +1,31 @@
 ------------------------------- MODULE PerfectTransmit -------------------------------
 
-VARIABLES transState
+MessageValues == {"Ian", "David", "Kevin"}
 
-Init == transState = "send"
+VARIABLES transState, message
 
-Send0 ==
+Init == transState = "send" /\ message \in MessageValues
+
+Send0(m) ==
     /\ transState = "send"
-    /\ transState' = "receive"
+    /\ transState' = "receive0"
+    /\ message' = m
 
-Send1 ==
+Send1(m) ==
     /\ transState = "send"
-    /\ transState' = "receive"
+    /\ transState' = "receive1"
+    /\ message' = m
 
-Receive0 ==
-    /\ transState = "receive"
+Receive0(m) ==
+    /\ message = m
+    /\ transState = "receive0"
     /\ transState' = "send"
+    /\ UNCHANGED<<message>>
 
-Receive1 ==
-    /\ transState = "receive"
+Receive1(m) ==
+    /\ message = m
+    /\ transState = "receive1"
     /\ transState' = "send"
+    /\ UNCHANGED<<message>>
 
 =============================================================================

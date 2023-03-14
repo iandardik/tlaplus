@@ -78,6 +78,12 @@ public class Robustness {
     	// initialize and run TLC
     	TLC tlc = new TLC("cmp");
     	TLC.runTLC(tla, cfg, tlc);
+    	
+    	// error checking
+    	if (tlc.getKripke() == null) {
+    		System.err.println("The spec is malformed.");
+    		return;
+    	}
 
     	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_PROPERTY);
     	jsonStrs.put(SPEC_NAME, tlc.getSpecName());
@@ -102,8 +108,18 @@ public class Robustness {
     	TLC.runTLC(tlaClosed, cfgClosed, tlcClosed);
     	final ExtKripke kripkeM = tlcM.getKripke();
     	final ExtKripke kripkeClosed = tlcClosed.getKripke();
-    	final ExtKripke kripkeCmp = new ExtKripke(kripkeM, kripkeClosed);
     	
+    	// error checking
+    	if (kripkeM == null) {
+    		System.err.println("The spec is malformed.");
+    		return;
+    	}
+    	if (kripkeClosed == null) {
+    		System.err.println("The closed system spec is malformed.");
+    		return;
+    	}
+    	
+    	final ExtKripke kripkeCmp = new ExtKripke(kripkeM, kripkeClosed);
     	computeEnvDiffRep(tlaM, tlcM, kripkeCmp, outputLoc, jsonStrs, jsonLists);
     	
     	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_ENV);
@@ -125,6 +141,16 @@ public class Robustness {
     	TLC tlc2 = new TLC("spec2");
     	TLC.runTLC(tla1, cfg1, tlc1);
     	TLC.runTLC(tla2, cfg2, tlc2);
+
+    	// error checking
+    	if (tlc1.getKripke() == null) {
+    		System.err.println("The first spec is malformed.");
+    		return;
+    	}
+    	if (tlc2.getKripke() == null) {
+    		System.err.println("The second spec is malformed.");
+    		return;
+    	}
     	
     	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_SPEC);
     	jsonStrs.put(SPEC1_NAME, tlc1.getSpecName());
@@ -195,10 +221,10 @@ public class Robustness {
     	
     	if (!kripke1.isSafe() && !kripke2.isSafe()) {
     		// compute \eta1-\eta2 and \eta2-\eta1
-    		computeComparisonDiffRepWrtOneSpec(errPre2, errPost2, errPre1, errPost1, tlc1, tlc2, tlc1.getSpecName(),
-    				outputLoc, SpecScope.Spec1, jsonStrs, jsonLists);
-    		computeComparisonDiffRepWrtOneSpec(errPre1, errPost1, errPre2, errPost2, tlc2, tlc1, tlc2.getSpecName(),
-    				outputLoc, SpecScope.Spec2, jsonStrs, jsonLists);
+    		computeComparisonDiffRepWrtOneSpec(new ExtKripke(errPre2), new ExtKripke(errPost2), new ExtKripke(errPre1), new ExtKripke(errPost1),
+    				tlc2, tlc1, tlc1.getSpecName(), outputLoc, SpecScope.Spec1, jsonStrs, jsonLists);
+    		computeComparisonDiffRepWrtOneSpec(new ExtKripke(errPre1), new ExtKripke(errPost1), new ExtKripke(errPre2), new ExtKripke(errPost2),
+    				tlc1, tlc2, tlc2.getSpecName(), outputLoc, SpecScope.Spec2, jsonStrs, jsonLists);
     	}
     }
 
@@ -224,7 +250,7 @@ public class Robustness {
         	final boolean bothHaveTypeOK = tlc1.hasInvariant(TYPE_OK) && tlc2.hasInvariant(TYPE_OK);
         	if (bothHaveTypeOK) {
             	// compute the entire state space
-            	final TLC tlcTypeOK = new TLC("CmpTypeOK");
+            	final TLC tlcTypeOK = new TLC("CmpTypeOK" + refSpec);
             	runTLCExtractStateSpace(tlc1, tlc2, outputLoc, tlcTypeOK);
             	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
         	}
