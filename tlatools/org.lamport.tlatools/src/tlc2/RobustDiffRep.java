@@ -119,9 +119,10 @@ public class RobustDiffRep {
     	
     	// we can automatically extract types by looking at the states in stateSpace.
     	// there is no need to examine TypeOK
+    	// type domains should be mutually exclusive; we issue a warning if they aren't
     	// TODO it would be a nice sanity check to make sure the vars in varTypes match those in tlc1 and tlc2
-    	// TODO type domains should be mutually exclusive, we need to bail if they aren't
     	final Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpaceStrs);
+    	domainsAreMutuallyExclusiveCheck(varTypes);
     	
     	// in the posExamples, figure out which state vars may have multiple values.
     	// we will then leverage the FOL separator tool to create a formula that describes these values.
@@ -157,6 +158,20 @@ public class RobustDiffRep {
 	
 	
 	/* Static helper methods */
+	
+	private static void domainsAreMutuallyExclusiveCheck(final Map<String, StateVarType> varTypes) {
+		final List<StateVarType> types = new ArrayList<>(varTypes.values());
+		for (int i = 0; i < types.size(); ++i) {
+			for (int j = i+1; j < types.size(); ++j) {
+				final StateVarType iType = types.get(i);
+				final StateVarType jType = types.get(j);
+				final boolean differentTypeNames = !iType.getName().equals(jType.getName());
+				if (differentTypeNames && !ExtKripke.intersection(iType.getDomain(), jType.getDomain()).isEmpty()) {
+					System.err.println("Warning: domains intersect for types " + iType.getName() + " and " + jType.getName());
+				}
+			}
+		}
+	}
     
     private static String writeSortsMap(final Set<StateVarType> nonConstValueTypes, final String specName, final String groupName, final String outputLoc) {
     	List<String> mappings = new ArrayList<>();
