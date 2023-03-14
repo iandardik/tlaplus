@@ -29,7 +29,7 @@ Safety boundary rep formula (with sort definitions):
 /\ senderBit = 0
 /\ receiverState = "waitRec"
 /\ receiverBit = 0
-/\ "send" # "waitInput"
+/\ "Ian" # "Kevin"
 
 Robustness comparison: eta(NaiveProtocol) - eta(ABPProtocol)
 Diff rep grouped by action:

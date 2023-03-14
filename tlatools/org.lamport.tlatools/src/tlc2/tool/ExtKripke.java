@@ -55,7 +55,7 @@ public class ExtKripke {
     	}
     	
         // add env states. small optimization: we know that all env states are safe
-    	final Set<TLCState> srcMGoodStates = setMinus(srcM.allStates, srcM.badStates);
+    	final Set<TLCState> srcMGoodStates = Utils.setMinus(srcM.allStates, srcM.badStates);
     	for (final TLCState s : srcMGoodStates) {
     		if (refinedContainerContainsAbstractState(srcClosed.allStates, s)) {
     			this.envStates.add(s);
@@ -122,7 +122,7 @@ public class ExtKripke {
     	Set<Pair<TLCState,TLCState>> deltaErrPre = filterDeltaByStates(errStates, deltaErrSinks);
     	// no way to add SF yet
     	ExtKripke errPre = new ExtKripke();
-    	errPre.initStates = intersection(this.initStates, errStates);
+    	errPre.initStates = Utils.intersection(this.initStates, errStates);
     	errPre.allStates = errStates;
     	errPre.delta = deltaErrPre;
     	errPre.deltaActions = this.deltaActions;
@@ -148,37 +148,7 @@ public class ExtKripke {
 
         return builder.toString();
     }
-
-
-    public static <T> Set<T> union(Set<T> s1, Set<T> s2) {
-    	Set<T> un = new HashSet<T>();
-    	un.addAll(s1);
-    	un.addAll(s2);
-    	return un;
-    }
     
-    public static <T> Set<T> intersection(Set<T> s1, Set<T> s2) {
-    	Set<T> inters = new HashSet<T>();
-    	inters.addAll(s1);
-    	inters.retainAll(s2);
-    	return inters;
-    }
-    
-    public static <T> Set<T> setMinus(Set<T> s1, Set<T> s2) {
-    	Set<T> setmin = new HashSet<T>();
-    	setmin.addAll(s1);
-    	setmin.removeAll(s2);
-    	return setmin;
-    }
-    
-    public static <T> T singletonGetElement(Set<T> set) {
-    	assert(set.size() == 1);
-    	T elem = null;
-    	for (T e : set) {
-    		elem = e;
-    	}
-    	return elem;
-    }
     
     public Set<TLCState> safetyBoundary() {
     	return calculateBoundary(BoundaryType.safety);
@@ -186,8 +156,8 @@ public class ExtKripke {
     
     public Set<TLCState> robustSafetyBoundary() {
     	// the set of states that leave the env, but are guaranteed to be 1-step safe
-    	final Set<TLCState> nonEnvStates = setMinus(this.allStates, this.envStates);
-    	return setMinus(calculateBoundary(BoundaryType.safety, nonEnvStates), calculateBoundary(BoundaryType.safety, this.badStates));
+    	final Set<TLCState> nonEnvStates = Utils.setMinus(this.allStates, this.envStates);
+    	return Utils.setMinus(calculateBoundary(BoundaryType.safety, nonEnvStates), calculateBoundary(BoundaryType.safety, this.badStates));
     }
     
     private Set<TLCState> errorBoundary() {
@@ -205,8 +175,8 @@ public class ExtKripke {
     	// nonEnvStates = goodStates \cap envStates
     	// we have by assumption: envStates \subseteq goodStates
     	// so: badStates \subseteq nonEnvStates
-    	final Set<TLCState> nonEnvStates = setMinus(this.allStates, this.envStates);
-    	final Set<TLCState> goodNonEnvStates = setMinus(nonEnvStates, this.badStates);
+    	final Set<TLCState> nonEnvStates = Utils.setMinus(this.allStates, this.envStates);
+    	final Set<TLCState> goodNonEnvStates = Utils.setMinus(nonEnvStates, this.badStates);
     	final Set<TLCState> envBoundaryStates = calculateBoundary(BoundaryType.safety, nonEnvStates);
     	Map<String, Set<String>> leaveEnv = boundaryPerAction(envBoundaryStates, goodNonEnvStates);
     	
@@ -219,7 +189,7 @@ public class ExtKripke {
     	for (final String act : leaveEnv.keySet()) {
     		if (safetyBoundary.containsKey(act)) {
     			// remove any states that can lead to an error through this action in 1 step
-    			final Set<String> robustSafetyBoundaryForAct = setMinus(leaveEnv.get(act), safetyBoundary.get(act));
+    			final Set<String> robustSafetyBoundaryForAct = Utils.setMinus(leaveEnv.get(act), safetyBoundary.get(act));
     			if (robustSafetyBoundaryForAct.isEmpty()) {
     				keysToRemove.add(act);
     			} else {
@@ -245,11 +215,11 @@ public class ExtKripke {
     
     // invariant: all states in frontier are safe (not in errorStates)
     private Set<TLCState> calculateBoundary(final BoundaryType boundaryType, final Set<TLCState> errorStates) {
-    	Set<TLCState> goodInitStates = setMinus(this.initStates, errorStates);
+    	Set<TLCState> goodInitStates = Utils.setMinus(this.initStates, errorStates);
     	Set<TLCState> explored = new HashSet<>(goodInitStates);
     	Set<TLCState> frontier = new HashSet<>(goodInitStates);
     	Set<TLCState> boundary = (boundaryType.equals(BoundaryType.safety)) ?
-    			new HashSet<>() : intersection(this.initStates, errorStates);
+    			new HashSet<>() : Utils.intersection(this.initStates, errorStates);
     	
     	while (!frontier.isEmpty()) {
     		Set<TLCState> addToFrontier = new HashSet<TLCState>();
@@ -370,7 +340,7 @@ public class ExtKripke {
     // i.e. we find all erroneous behaviors of m1 that are NOT erroneous behaviors of m2
     public static Set<Pair<TLCState,Action>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2) {
     	final Set<TLCState> mutualReach = mutualReach(m1, m2);
-    	final Set<Pair<TLCState,TLCState>> m1MinusM2Delta = setMinus(m1.delta, m2.delta);
+    	final Set<Pair<TLCState,TLCState>> m1MinusM2Delta = Utils.setMinus(m1.delta, m2.delta);
     	final Set<Pair<TLCState,Action>> rep = new HashSet<Pair<TLCState,Action>>();
 		for (Pair<TLCState,TLCState> t1 : m1MinusM2Delta) {
 			TLCState s = t1.first;
@@ -385,8 +355,8 @@ public class ExtKripke {
     
     private static Set<TLCState> mutualReach(final ExtKripke m1, final ExtKripke m2) {
     	Set<TLCState> reach = new HashSet<TLCState>();
-    	Set<TLCState> mutualInit = intersection(m1.initStates, m2.initStates);
-    	Set<Pair<TLCState,TLCState>> mutualDelta = intersection(m1.delta, m2.delta);
+    	Set<TLCState> mutualInit = Utils.intersection(m1.initStates, m2.initStates);
+    	Set<Pair<TLCState,TLCState>> mutualDelta = Utils.intersection(m1.delta, m2.delta);
     	for (TLCState init : mutualInit) {
         	mutualReach(mutualDelta, init, reach);
     	}

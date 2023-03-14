@@ -37,6 +37,37 @@ public class Utils {
 		}
 	}
 	
+	
+    public static <T> Set<T> union(Set<T> s1, Set<T> s2) {
+    	Set<T> un = new HashSet<T>();
+    	un.addAll(s1);
+    	un.addAll(s2);
+    	return un;
+    }
+    
+    public static <T> Set<T> intersection(Set<T> s1, Set<T> s2) {
+    	Set<T> inters = new HashSet<T>();
+    	inters.addAll(s1);
+    	inters.retainAll(s2);
+    	return inters;
+    }
+    
+    public static <T> Set<T> setMinus(Set<T> s1, Set<T> s2) {
+    	Set<T> setmin = new HashSet<T>();
+    	setmin.addAll(s1);
+    	setmin.removeAll(s2);
+    	return setmin;
+    }
+    
+    public static <T> T singletonGetElement(Set<T> set) {
+    	assert(set.size() == 1);
+    	T elem = null;
+    	for (T e : set) {
+    		elem = e;
+    	}
+    	return elem;
+    }
+	
 
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(TLCState tlaState) {
     	return extractKeyValuePairsFromState(normalizeStateString(tlaState.toString()));

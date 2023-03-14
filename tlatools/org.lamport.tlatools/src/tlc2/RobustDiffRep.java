@@ -115,7 +115,7 @@ public class RobustDiffRep {
 
     	// diffRepStateStrs is the set of positive examples
     	// notDiffStateStrs is the set of negative examples
-    	final Set<String> negExamples = ExtKripke.setMinus(stateSpaceStrs, posExamples);
+    	final Set<String> negExamples = Utils.setMinus(stateSpaceStrs, posExamples);
     	
     	// we can automatically extract types by looking at the states in stateSpace.
     	// there is no need to examine TypeOK
@@ -166,7 +166,7 @@ public class RobustDiffRep {
 				final StateVarType iType = types.get(i);
 				final StateVarType jType = types.get(j);
 				final boolean differentTypeNames = !iType.getName().equals(jType.getName());
-				if (differentTypeNames && !ExtKripke.intersection(iType.getDomain(), jType.getDomain()).isEmpty()) {
+				if (differentTypeNames && !Utils.intersection(iType.getDomain(), jType.getDomain()).isEmpty()) {
 					System.err.println("Warning: domains intersect for types " + iType.getName() + " and " + jType.getName());
 				}
 			}
@@ -267,7 +267,7 @@ public class RobustDiffRep {
     		StateVarType t = diffStateVarDomains.get(var);
     		assert(t.getDomain().size() > 0);
     		if (t.getDomain().size() == 1) {
-    			final String exactValue = ExtKripke.singletonGetElement(t.getDomain());
+    			final String exactValue = Utils.singletonGetElement(t.getDomain());
     			constValueVars.add(var);
     			constValueValues.put(var, exactValue);
     		} else {

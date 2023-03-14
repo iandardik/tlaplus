@@ -232,7 +232,7 @@ public class Robustness {
     private static void computeComparisonDiffRepWrtOneSpec(final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
     		final TLC tlc1, final TLC tlc2, final String refSpec, final String outputLoc,
     		final SpecScope specScope, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
-    	final Set<Pair<TLCState,Action>> diffRepSet = ExtKripke.union(
+    	final Set<Pair<TLCState,Action>> diffRepSet = Utils.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
     	final Set<TLCState> diffRepTlcStates = ExtKripke.projectFirst(diffRepSet);

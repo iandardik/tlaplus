@@ -7,7 +7,7 @@ Safety boundary rep formula (with sort definitions):
 /\ receiverBit = 1
 /\ senderState = "waitInput"
 /\ receiverState = "ackWaitRec"
-/\ 0 # 1
+/\ "Ian" # "Kevin"
 
 GetAck0:
 Safety boundary representation: out/ABPProtocol_GetAck0_diff_rep.txt
