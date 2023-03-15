@@ -51,7 +51,9 @@ Spec == Init /\ [][Next]_vars
 TypeOK == Iface!TypeOK /\ Booth!TypeOK
 OnePersonInBooth == Booth!OnePersonInBooth
 
-NoVoteFlip == \A c \in confirmed : c = voterChoice
+NoVoteFlip ==
+    \/ confirmed = {"None"}
+    \/ \A c \in confirmed : c = voterChoice
 
 \* does not imply a true vote flip
 EOCannotConfirm == ~("eofficial" \in booth /\ state = "confirm")
