@@ -1,4 +1,4 @@
------------------------------ MODULE Terminal -----------------------------
+----------------------------- MODULE Terminal_BadFix -----------------------------
 
 VARIABLES state
 
@@ -25,9 +25,11 @@ TypeEnter ==
        /\ state' = "cursorAtBottom"
     \/ /\ state \in {"blank", "cursorAtBottom"}
        /\ UNCHANGED vars
+    \/ /\ state = "cursorAtBottom"
+       /\ state' = "readyForBeamReady"
 
 BeamReady ==
-    /\ state = "cursorAtBottom"
+    /\ state = "readyForBeamReady"
     /\ state' = "beamReady"
 
 TypeB ==
@@ -44,6 +46,6 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
-TypeOK == state \in {"blank", "cursorAtTop", "cursorAtBottom", "beamReady", "finished"}
+TypeOK == state \in {"blank", "cursorAtTop", "cursorAtBottom", "readyForBeamReady", "beamReady", "finished"}
 
 =============================================================================

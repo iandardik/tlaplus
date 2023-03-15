@@ -116,6 +116,10 @@ public class ExtKripke {
     	return this.allStates;
     }
     
+    public boolean isBadState(final TLCState s) {
+    	return this.badStates.contains(s);
+    }
+    
     public ExtKripke createErrPre() {
     	Set<TLCState> errStates = notAlwaysNotPhiStates();
     	Set<Pair<TLCState,TLCState>> deltaErrSinks = createDeltaWithErrorSinks(badStates, delta);
@@ -334,15 +338,16 @@ public class ExtKripke {
     // compute the representation for \eta(m2,P) - \eta(m1,P)
     // note: \eta(m2,P) - \eta(m1,P) = beh(m1_err) - beh(m2_err)
     // i.e. we find all erroneous behaviors of m1 that are NOT erroneous behaviors of m2
-    public static Set<Pair<TLCState,Action>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2) {
+    public static Set<Pair<TLCState,Action>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2, final ExtKripke refKripke) {
     	final Set<TLCState> mutualReach = mutualReach(m1, m2);
     	final Set<Pair<TLCState,TLCState>> m1MinusM2Delta = Utils.setMinus(m1.delta, m2.delta);
     	final Set<Pair<TLCState,Action>> rep = new HashSet<Pair<TLCState,Action>>();
-		for (Pair<TLCState,TLCState> t1 : m1MinusM2Delta) {
-			TLCState s = t1.first;
-			if (mutualReach.contains(s)) {
-				// found an outgoing transition (of ONLY m1) from s
-				final Action act = m1.deltaActions.get(t1);
+		for (final Pair<TLCState,TLCState> transition : m1MinusM2Delta) {
+			final TLCState s = transition.first;
+			final TLCState t = transition.second;
+			if (mutualReach.contains(s) && refKripke.isBadState(t)) {
+				// found an outgoing transition (of ONLY m1) from s to a bad state
+				final Action act = m1.deltaActions.get(transition);
 				rep.add(new Pair<TLCState,Action>(s, act));
 			}
 		}
@@ -383,7 +388,6 @@ public class ExtKripke {
     
     // print a TLA+ spec
     
-    // TODO if the spec has fairness requirements we need to add them in
     public String toPartialTLASpec(String varsSeqName, String specFairness, boolean strongFairness) {
     	StringBuilder builder = new StringBuilder();
     	
@@ -443,15 +447,6 @@ public class ExtKripke {
     	return String.join("' =", strs);
     }
     
-    public String toTLASpec(String moduleName) {
-    	throw new RuntimeException("Not implemented!");
-    	//StringBuilder builder = new StringBuilder();
-    	//builder.append("--------------------------- MODULE ");
-    	//builder.append(moduleName);
-    	//builder.append(" ---------------------------\n");
-    	//return builder.toString();
-    }
-    
     private static ArrayList<String> statesToStringList(Set<TLCState> set) {
     	ArrayList<String> arr = new ArrayList<String>();
     	for (TLCState s : set) {
@@ -462,60 +457,6 @@ public class ExtKripke {
     
     
     // code for printKS() below
-
-    private Map<Action, ArrayList<TLCState>> createActionGuards() {
-    	Map<Action, ArrayList<TLCState>> actionGuards = new HashMap<Action, ArrayList<TLCState>>();
-    	
-    	for (Action act : deltaActions.values()) {
-    		actionGuards.put(act, new ArrayList<TLCState>());
-    	}
-    	
-        for (TLCState src : allStates) {
-            for (TLCState dst : badStates) {
-            	Pair<TLCState,TLCState> unsafeTransition = new Pair<TLCState,TLCState>(src, dst);
-            	if (delta.contains(unsafeTransition)) {
-            		// found an "unsafe" transition
-            		Action act = deltaActions.get(unsafeTransition);
-            		actionGuards.get(act).add(src);
-            	}
-            }
-        }
-        return actionGuards;
-    }
-    
-    private Set<Pair<String, String>> createActionGuardStrings(Map<Action, ArrayList<TLCState>> actionGuards) {
-    	Set<Pair<String, String>> actionGuardStrings = new HashSet<Pair<String, String>>();
-    	for (Map.Entry<Action, ArrayList<TLCState>> e : actionGuards.entrySet()) {
-    		Action act = e.getKey();
-    		StringBuilder builder = new StringBuilder();
-    		for (TLCState s : e.getValue()) {
-    			String guard = " /\\ ~(" + format(s.toString()) + ")";
-    			builder.append(guard);
-    		}
-    		Pair<String,String> guardStringPair = new Pair<String,String>(act.getName().toString(), builder.toString());
-    		actionGuardStrings.add(guardStringPair);
-    	}
-    	return actionGuardStrings;
-    }
-    
-    private String createGuardedNext() {
-    	Map<Action, ArrayList<TLCState>> actionGuards = createActionGuards();
-    	Set<Pair<String, String>> actionGuardStrings = createActionGuardStrings(actionGuards);
-    	
-    	StringBuilder builder = new StringBuilder();
-    	for (Pair<String, String> guardedActionPair : actionGuardStrings) {
-    		String act = guardedActionPair.first;
-    		String guardedAction = guardedActionPair.second;
-    		builder.append(act).append("_Guarded == ");
-    		builder.append(act).append(guardedAction).append("\n");
-    	}
-    	builder.append("Next ==\n");
-    	for (Pair<String, String> guardedActionPair : actionGuardStrings) {
-    		String act = guardedActionPair.first;
-    		builder.append("  \\/ ").append(act).append("_Guarded").append("\n");
-    	}
-    	return builder.toString();
-    }
     
     private String printKS() {
         StringBuilder builder = new StringBuilder();
@@ -544,10 +485,6 @@ public class ExtKripke {
         		builder.append("  " + act.getName() + ": (" + format(src.toString()) + ", " + format(dst.toString()) + ")\n");
         	}
         }
-        
-        //builder.append("\n");
-        //builder.append("WA:\n");
-        //builder.append(createGuardedNext());
 
         return builder.toString();
     }

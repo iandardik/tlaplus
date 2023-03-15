@@ -4,50 +4,31 @@ The robustness of the two specs are incomparable
 Robustness comparison: eta(ABPProtocol) - eta(NaiveProtocol)
 Diff rep grouped by action:
 
-Output:
-Safety boundary representation: out/ABPProtocol_Output_diff_rep.txt
-Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","Ian"}
-/\ receiverState = "output"
-/\ \A S \in Sort1 : ((output # S \/ input # S \/ senderBit = 0 \/ senderState # "waitInput") /\ (output # S \/ input # S \/ receiverBit # 0 \/ senderState = "send"))
-
-Send1:
-Safety boundary representation: out/ABPProtocol_Send1_diff_rep.txt
-Safety boundary rep formula (with sort definitions):
-/\ senderState = "send"
-/\ ((receiverBit = 1 => receiverState = "output") /\ (senderBit = 1 => receiverState = "output"))
-
-Send0:
-Safety boundary representation: out/ABPProtocol_Send0_diff_rep.txt
-Safety boundary rep formula (with sort definitions):
-/\ senderState = "send"
-/\ ((receiverBit = 1 => receiverState = "output") /\ (senderBit = 1 => receiverState = "output"))
-
 Receive0:
 Safety boundary representation: out/ABPProtocol_Receive0_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
 /\ senderBit = 0
 /\ receiverState = "waitRec"
 /\ receiverBit = 0
+/\ senderState = "waitInput"
 
 Robustness comparison: eta(NaiveProtocol) - eta(ABPProtocol)
 Diff rep grouped by action:
 
-Output:
-Safety boundary representation: out/NaiveProtocol_Output_diff_rep.txt
-Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","Ian"}
-/\ receiverState = "output"
-/\ \A S \in Sort1 : ((output # S \/ input # S \/ receiverBit # 0 \/ senderState = "send") /\ (output # S \/ input # S \/ senderBit # 1 \/ senderState # "waitInput"))
-
 GetAck0:
 Safety boundary representation: out/NaiveProtocol_GetAck0_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
+Sort1 == {"Kevin","David","Ian"}
 /\ senderState = "send"
-/\ ((receiverBit = 1 => receiverState = "output") /\ (senderBit = 1 => receiverState = "output"))
+/\ senderBit = 0
+/\ receiverState = "output"
+/\ \A S \in Sort1 : (output # S \/ input # S)
 
 GetAck1:
 Safety boundary representation: out/NaiveProtocol_GetAck1_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
+Sort1 == {"Kevin","David","Ian"}
 /\ senderState = "send"
-/\ ((receiverBit = 1 => receiverState = "output") /\ (senderBit = 1 => receiverState = "output"))
+/\ senderBit = 1
+/\ receiverState = "output"
+/\ \A S \in Sort1 : (output # S \/ input # S)

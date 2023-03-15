@@ -143,14 +143,8 @@ public class Robustness {
     	TLC.runTLC(tla2, cfg2, tlc2);
 
     	// error checking
-    	if (tlc1.getKripke() == null) {
-    		System.err.println("The first spec is malformed.");
-    		return;
-    	}
-    	if (tlc2.getKripke() == null) {
-    		System.err.println("The second spec is malformed.");
-    		return;
-    	}
+    	Utils.assertNotNull(tlc1.getKripke(), "The first spec is malformed.");
+    	Utils.assertNotNull(tlc2.getKripke(), "The second spec is malformed.");
     	
     	jsonStrs.put(COMPARISON_TYPE, SPEC_TO_SPEC);
     	jsonStrs.put(SPEC1_NAME, tlc1.getSpecName());
@@ -221,20 +215,21 @@ public class Robustness {
     	
     	if (!kripke1.isSafe() && !kripke2.isSafe()) {
     		// compute \eta1-\eta2 and \eta2-\eta1
-    		computeComparisonDiffRepWrtOneSpec(new ExtKripke(errPre2), new ExtKripke(errPost2), new ExtKripke(errPre1), new ExtKripke(errPost1),
+    		computeComparisonDiffRepWrtOneSpec(new ExtKripke(kripke2), new ExtKripke(errPre2), new ExtKripke(errPost2), new ExtKripke(errPre1), new ExtKripke(errPost1),
     				tlc2, tlc1, tlc1.getSpecName(), outputLoc, SpecScope.Spec1, jsonStrs, jsonLists);
-    		computeComparisonDiffRepWrtOneSpec(new ExtKripke(errPre1), new ExtKripke(errPost1), new ExtKripke(errPre2), new ExtKripke(errPost2),
+    		computeComparisonDiffRepWrtOneSpec(new ExtKripke(kripke1), new ExtKripke(errPre1), new ExtKripke(errPost1), new ExtKripke(errPre2), new ExtKripke(errPost2),
     				tlc1, tlc2, tlc2.getSpecName(), outputLoc, SpecScope.Spec2, jsonStrs, jsonLists);
     	}
     }
 
 	// compute the diff rep, i.e. the states that represent \eta2 - \eta1
-    private static void computeComparisonDiffRepWrtOneSpec(final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
+    private static void computeComparisonDiffRepWrtOneSpec(final ExtKripke refKripke,
+    		final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
     		final TLC tlc1, final TLC tlc2, final String refSpec, final String outputLoc,
     		final SpecScope specScope, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	final Set<Pair<TLCState,Action>> diffRepSet = Utils.union(
-    			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2),
-    			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2));
+    			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2, refKripke),
+    			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2, refKripke));
     	final Set<TLCState> diffRepTlcStates = ExtKripke.projectFirst(diffRepSet);
     	final Set<String> diffRepStates = Utils.stateSetToStringSet(diffRepTlcStates);
     	final Map<String, Set<String>> diffRepStatesByGroup = groupTheDiffRep(diffRepSet, GROUP_DIFF_REP_BY_ACTION);
