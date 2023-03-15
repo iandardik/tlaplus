@@ -227,7 +227,7 @@ public class Robustness {
     		final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
     		final TLC tlc1, final TLC tlc2, final String refSpec, final String outputLoc,
     		final SpecScope specScope, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
-    	final Set<Pair<TLCState,Action>> diffRepSet = Utils.union(
+    	final Set<Pair<TLCState,String>> diffRepSet = Utils.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2, refKripke),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2, refKripke));
     	final Set<TLCState> diffRepTlcStates = Utils.projectFirst(diffRepSet);
@@ -255,11 +255,11 @@ public class Robustness {
     	}
     }
     
-    private static Map<String, Set<String>> groupTheDiffRep(final Set<Pair<TLCState,Action>> diffRepSet, final boolean groupByAction) {
+    private static Map<String, Set<String>> groupTheDiffRep(final Set<Pair<TLCState,String>> diffRepSet, final boolean groupByAction) {
     	if (groupByAction) {
     		Map<String, Set<String>> diffRepGroups = new HashMap<>();
-    		for (Pair<TLCState,Action> diffRep : diffRepSet) {
-    			final String group = diffRep.second.getName().toString();
+    		for (Pair<TLCState,String> diffRep : diffRepSet) {
+    			final String group = diffRep.second;
     			final String state = Utils.normalizeStateString(diffRep.first.toString());
     			if (!diffRepGroups.containsKey(group)) {
     				diffRepGroups.put(group, new HashSet<>());

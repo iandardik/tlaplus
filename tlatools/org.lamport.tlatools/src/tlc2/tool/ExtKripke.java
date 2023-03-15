@@ -342,17 +342,18 @@ public class ExtKripke {
     // compute the representation for \eta(m2,P) - \eta(m1,P)
     // note: \eta(m2,P) - \eta(m1,P) = beh(m1_err) - beh(m2_err)
     // i.e. we find all erroneous behaviors of m1 that are NOT erroneous behaviors of m2
-    public static Set<Pair<TLCState,Action>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2, final ExtKripke refKripke) {
+    public static Set<Pair<TLCState,String>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2, final ExtKripke refKripke) {
     	final Set<TLCState> mutualReach = mutualReach(m1, m2);
     	final Set<Pair<TLCState,TLCState>> m1MinusM2Delta = Utils.setMinus(m1.delta, m2.delta);
-    	final Set<Pair<TLCState,Action>> rep = new HashSet<Pair<TLCState,Action>>();
+    	final Set<Pair<TLCState,String>> rep = new HashSet<>();
 		for (final Pair<TLCState,TLCState> transition : m1MinusM2Delta) {
 			final TLCState s = transition.first;
 			final TLCState t = transition.second;
 			if (mutualReach.contains(s) && refKripke.isBadState(t)) {
 				// found an outgoing transition (of ONLY m1) from s to a bad state
 				final Action act = m1.deltaActions.get(transition);
-				rep.add(new Pair<TLCState,Action>(s, act));
+				final String actName = act.getName().toString();
+				rep.add(new Pair<>(s, actName));
 			}
 		}
     	return rep;
