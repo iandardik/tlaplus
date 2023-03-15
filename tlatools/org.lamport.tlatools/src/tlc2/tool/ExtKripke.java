@@ -8,15 +8,19 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import tlc2.Utils;
-import tlc2.tool.ExtKripke.Pair;
+import tlc2.Utils.Pair;
 
 import java.lang.StringBuilder;
 
 
 public class ExtKripke {
+    
+    private enum BoundaryType {
+    	safety, error
+    }
+    
     private Set<TLCState> initStates;
     private Set<TLCState> allStates;
     private Set<TLCState> badStates;
@@ -147,7 +151,7 @@ public class ExtKripke {
 
         builder.append("NANPS\n");
         for (TLCState s : this.notAlwaysNotPhiStates()) {
-        	builder.append("  " + format(s) + "\n");
+        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
         }
 
         return builder.toString();
@@ -377,15 +381,6 @@ public class ExtKripke {
     }
     
     
-    
-    // printing
-
-    @Override
-    public String toString() {
-    	return printKS();
-    }
-    
-    
     // print a TLA+ spec
     
     public String toPartialTLASpec(String varsSeqName, String specFairness, boolean strongFairness) {
@@ -430,9 +425,9 @@ public class ExtKripke {
     private String nextExpr() {
     	ArrayList<String> strTransitions = new ArrayList<String>();
     	for (Pair<TLCState,TLCState> t : delta) {
-    		String pre = format(t.first.toString());
+    		String pre = Utils.normalizeStateString(t.first.toString());
     		//String post = "(" + format(t.second.toString()) + ")'";
-    		String post = primeVars(format(t.second.toString()));
+    		String post = primeVars(Utils.normalizeStateString(t.second.toString()));
     		String action = pre + " /\\ " + post;
     		strTransitions.add(action);
     	}
@@ -450,30 +445,28 @@ public class ExtKripke {
     private static ArrayList<String> statesToStringList(Set<TLCState> set) {
     	ArrayList<String> arr = new ArrayList<String>();
     	for (TLCState s : set) {
-    		arr.add(format(s.toString()));
+    		arr.add(Utils.normalizeStateString(s.toString()));
     	}
     	return arr;
     }
-    
-    
-    // code for printKS() below
-    
-    private String printKS() {
+
+    @Override
+    public String toString() {
         StringBuilder builder = new StringBuilder();
 
         builder.append("Init States\n");
         for (TLCState s : initStates) {
-        	builder.append("  " + format(s) + "\n");
+        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
         }
 
         builder.append("All States\n");
         for (TLCState s : allStates) {
-        	builder.append("  " + format(s) + "\n");
+        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
         }
 
         builder.append("Bad States\n");
         for (TLCState s : badStates) {
-        	builder.append("  " + format(s) + "\n");
+        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
         }
 
         builder.append("Delta\n");
@@ -482,92 +475,10 @@ public class ExtKripke {
         	TLCState dst = transition.second;
         	Action act = deltaActions.get(transition);
         	if (act != null) {
-        		builder.append("  " + act.getName() + ": (" + format(src.toString()) + ", " + format(dst.toString()) + ")\n");
+        		builder.append("  " + act.getName() + ": (" + Utils.normalizeStateString(src.toString()) + ", " + Utils.normalizeStateString(dst.toString()) + ")\n");
         	}
         }
 
         return builder.toString();
-    }
-
-
-    public static class Pair<A,B> {
-        public A first;
-        public B second;
-        
-        public Pair(A f, B s) {
-        	first = f;
-        	second = s;
-        }
-        
-        @Override
-        public int hashCode() {
-        	return first.hashCode() + 5701 * second.hashCode();
-        }
-        
-        @Override
-        public boolean equals(Object other) {
-        	if (other instanceof Pair<?,?>) {
-        		Pair<?,?> p = (Pair<?,?>) other;
-        		return this.first.equals(p.first) && this.second.equals(p.second);
-        	}
-        	return false;
-        }
-        
-        @Override
-        public String toString() {
-        	return "Pair(" + first.toString() + ", " + second.toString() + ")";
-        }
-    }
-    
-    public static <A,B> Set<A> projectFirst(Set<Pair<A,B>> set) {
-    	Set<A> proj = new HashSet<A>();
-    	for (Pair<A,B> e : set) {
-    		proj.add(e.first);
-    	}
-    	return proj;
-    }
-    
-    private static String format(TLCState s) {
-    	return format(s.toString());
-    }
-    
-    private static String format(String s) {
-    	return stripLeadingAnd(spaceAfterAnd(stripNewline(s))).trim();
-    }
-
-    private static String stripLeadingAnd(String s) {
-		if (s.length() >= 2 && s.substring(0, 2).equals("/\\")) {
-			return s.substring(2);
-		}
-		else {
-			return s;
-		}
-	}
-    
-    private static String spaceAfterAnd(String s) {
-    	ArrayList<String> conjuncts = new ArrayList<String>();
-    	String[] raw = s.split(Pattern.quote("/\\"));
-    	for (int i = 0; i < raw.length; ++i) {
-    		String val = raw[i].trim();
-    		if (!val.isEmpty()) {
-    			conjuncts.add(val);
-    		}
-    	}
-    	return String.join(" /\\ ", conjuncts);
-	}
-    
-    private static String stripNewline(String s) {
-		StringBuilder sNew = new StringBuilder();
-		for (int i = s.length()-1; i >= 0; --i) {
-			char c = s.charAt(i);
-			if (c != '\n') {
-				sNew.insert(0, c);
-			}
-		}
-		return sNew.toString();
-	}
-    
-    private enum BoundaryType {
-    	safety, error
     }
 }

@@ -15,13 +15,50 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import tlc2.tool.TLCState;
-import tlc2.tool.ExtKripke.Pair;
 
 public class Utils {
 	private static final String QUOTE = "\"";
 	private static final String COLON = ":";
 	private static final String LSQBRACE = "[";
 	private static final String RSQBRACE = "]";
+	
+	
+    public static class Pair<A,B> {
+        public A first;
+        public B second;
+        
+        public Pair(A f, B s) {
+        	first = f;
+        	second = s;
+        }
+        
+        @Override
+        public int hashCode() {
+        	return first.hashCode() + 5701 * second.hashCode();
+        }
+        
+        @Override
+        public boolean equals(Object other) {
+        	if (other instanceof Pair<?,?>) {
+        		Pair<?,?> p = (Pair<?,?>) other;
+        		return this.first.equals(p.first) && this.second.equals(p.second);
+        	}
+        	return false;
+        }
+        
+        @Override
+        public String toString() {
+        	return "Pair(" + first.toString() + ", " + second.toString() + ")";
+        }
+    }
+    
+    public static <A,B> Set<A> projectFirst(Set<Pair<A,B>> set) {
+    	Set<A> proj = new HashSet<A>();
+    	for (Pair<A,B> e : set) {
+    		proj.add(e.first);
+    	}
+    	return proj;
+    }
 
 	
 	/* Because assert() doesn't seem to work */

@@ -7,10 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import tlc2.Robustness;
-import tlc2.TLC;
 import tlc2.Utils;
-import tlc2.tool.ExtKripke.Pair;
+import tlc2.Utils.Pair;
 
 public class StateVarType {
 	private String name;

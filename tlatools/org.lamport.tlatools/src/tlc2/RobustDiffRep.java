@@ -10,7 +10,7 @@ import java.util.Set;
 import tlc2.tool.ExtKripke;
 import tlc2.tool.StateVarType;
 import tlc2.tool.TLCState;
-import tlc2.tool.ExtKripke.Pair;
+import tlc2.Utils.Pair;
 
 
 public class RobustDiffRep {

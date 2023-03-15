@@ -12,7 +12,7 @@ import tlc2.RobustDiffRep.SpecScope;
 import tlc2.tool.Action;
 import tlc2.tool.ExtKripke;
 import tlc2.tool.TLCState;
-import tlc2.tool.ExtKripke.Pair;
+import tlc2.Utils.Pair;
 import tlc2.tool.impl.FastTool;
 
 public class Robustness {
@@ -230,7 +230,7 @@ public class Robustness {
     	final Set<Pair<TLCState,Action>> diffRepSet = Utils.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2, refKripke),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2, refKripke));
-    	final Set<TLCState> diffRepTlcStates = ExtKripke.projectFirst(diffRepSet);
+    	final Set<TLCState> diffRepTlcStates = Utils.projectFirst(diffRepSet);
     	final Set<String> diffRepStates = Utils.stateSetToStringSet(diffRepTlcStates);
     	final Map<String, Set<String>> diffRepStatesByGroup = groupTheDiffRep(diffRepSet, GROUP_DIFF_REP_BY_ACTION);
 
@@ -269,7 +269,7 @@ public class Robustness {
     		return diffRepGroups;
     	}
     	else {
-        	final Set<TLCState> diffRepStates = ExtKripke.projectFirst(diffRepSet);
+        	final Set<TLCState> diffRepStates = Utils.projectFirst(diffRepSet);
 			Map<String, Set<String>> singleton = new HashMap<>();
 			singleton.put(ALL, Utils.stateSetToStringSet(diffRepStates));
 			return singleton;
