@@ -7,16 +7,16 @@ vars == <<state>>
 Init == state = "blank"
 
 TypeX ==
-    /\ state \in {"blank", "cursorAtTop"}
+    /\ state = "blank"
     /\ state' = "cursorAtTop"
 
 TypeE ==
-    /\ state \in {"blank", "cursorAtTop"}
+    /\ state = "blank"
     /\ state' = "cursorAtTop"
 
 TypeUp ==
     \/ /\ state = "cursorAtBottom"
-       /\ state' = "cursorAtTop"
+       /\ state' = "blank"
     \/ /\ state \in {"blank", "cursorAtTop"}
        /\ UNCHANGED vars
 

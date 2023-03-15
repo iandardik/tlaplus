@@ -177,7 +177,7 @@ public class ExtKripke {
     	// so: badStates \subseteq nonEnvStates
     	final Set<TLCState> nonEnvStates = Utils.setMinus(this.allStates, this.envStates);
     	final Set<TLCState> goodNonEnvStates = Utils.setMinus(nonEnvStates, this.badStates);
-    	final Set<TLCState> envBoundaryStates = calculateBoundary(BoundaryType.safety, nonEnvStates);
+    	final Set<TLCState> envBoundaryStates = calculateBoundary(BoundaryType.safety, goodNonEnvStates);
     	Map<String, Set<String>> leaveEnv = boundaryPerAction(envBoundaryStates, goodNonEnvStates);
     	
     	// so far we have calculated (state,action) pairs such that there EXISTS a world in which the action
@@ -185,20 +185,16 @@ public class ExtKripke {
     	// safely leaves the environment. we do this by removing any states at the safety boundary for the
     	// given action.
     	final Map<String, Set<String>> safetyBoundary = safetyBoundaryPerAction();
-    	Set<String> keysToRemove = new HashSet<>();
-    	for (final String act : leaveEnv.keySet()) {
-    		if (safetyBoundary.containsKey(act)) {
+    	for (final String act : safetyBoundary.keySet()) {
+    		if (leaveEnv.containsKey(act)) {
     			// remove any states that can lead to an error through this action in 1 step
     			final Set<String> robustSafetyBoundaryForAct = Utils.setMinus(leaveEnv.get(act), safetyBoundary.get(act));
     			if (robustSafetyBoundaryForAct.isEmpty()) {
-    				keysToRemove.add(act);
+    				leaveEnv.remove(act);
     			} else {
     				leaveEnv.put(act, robustSafetyBoundaryForAct);
     			}
     		}
-    	}
-    	for (final String k : keysToRemove) {
-    		leaveEnv.remove(k);
     	}
     	return leaveEnv;
     }
