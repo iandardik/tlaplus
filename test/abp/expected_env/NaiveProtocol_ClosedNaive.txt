@@ -30,7 +30,7 @@ Safety boundary rep formula (with sort definitions):
 Sort1 == {"Kevin","David","Ian"}
 /\ senderState = "waitAck"
 /\ senderBit = 0
-/\ \A S \in Sort1 : ((output = S \/ input # S \/ receiverBit # 0) /\ (receiverBit = 1 => receiverState = "waitRec") /\ (receiverState = "waitRec" => receiverBit = 1))
+/\ \A S \in Sort1 : ((output = S \/ input # S \/ receiverState = "waitRec") /\ (receiverState = "waitRec" => receiverBit = 1) /\ (receiverBit = 1 => receiverState = "waitRec"))
 
 GetAck1:
 Safety boundary representation: out/NaiveProtocol_GetAck1_diff_rep.txt

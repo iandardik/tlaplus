@@ -1,36 +1,43 @@
 ------------------------------- MODULE VotingWithDirections -------------------------------
 
 VARIABLES state, booth, voterChoice, eoChoice, confirmed
-VARIABLES dirState
 
-vars == <<state, booth, voterChoice, eoChoice, confirmed, dirState>>
-votingVars == <<state, booth, voterChoice, eoChoice, confirmed>>
-dirVars == <<dirState>>
+vars == <<state, booth, voterChoice, eoChoice, confirmed>>
+ifaceVars == <<state>>
+boothVars == <<booth, voterChoice, eoChoice, confirmed>>
 
-Voting == INSTANCE Voting
-              WITH state <- state,
-                   booth <- booth,
-                   voterChoice <- voterChoice,
-                   eoChoice <- eoChoice,
-                   confirmed <- confirmed
+Iface == INSTANCE DirectionsInterface
+            WITH state <- state
 
-Directions == INSTANCE Directions
-                  WITH dirState <- dirState
+Booth == INSTANCE Booth
+            WITH booth <- booth,
+                 voterChoice <- voterChoice,
+                 eoChoice <- eoChoice,
+                 confirmed <- confirmed
 
-Init == Voting!Init /\ Directions!Init
+Init == Iface!Init /\ Booth!Init
 
-VEnter == Voting!VEnter /\ UNCHANGED dirVars
-VExit == Voting!VExit /\ UNCHANGED dirVars
-EOEnter == Voting!EOEnter /\ UNCHANGED dirVars
-EOExit == Voting!EOExit /\ UNCHANGED dirVars
-EnterPassword == Voting!EnterPassword /\ UNCHANGED dirVars
-SelectCandidate == Voting!SelectCandidate /\ UNCHANGED dirVars
-Vote == Voting!Vote /\ UNCHANGED dirVars
-Confirm == Voting!Confirm /\ UNCHANGED dirVars
-Back == Voting!Back /\ UNCHANGED dirVars
+VEnter == UNCHANGED ifaceVars /\ Booth!VEnter
 
-ToDirectionMenu == UNCHANGED votingVars /\ Directions!ToDirectionMenu
-LeaveDirectionMenu == UNCHANGED votingVars /\ Directions!LeaveDirectionMenu
+VExit == UNCHANGED ifaceVars /\ Booth!VExit
+
+EOEnter == UNCHANGED ifaceVars /\ Booth!EOEnter
+
+EOExit == UNCHANGED ifaceVars /\ Booth!EOExit
+
+EnterPassword == Iface!EnterPassword /\ Booth!EnterPassword
+
+SelectCandidate == Iface!SelectCandidate /\ Booth!SelectCandidate
+
+Vote == Iface!Vote /\ Booth!Vote
+
+Confirm == Iface!Confirm /\ Booth!Confirm
+
+Back == Iface!Back /\ Booth!Back
+
+EnterDirectionsMenu == Iface!EnterDirectionsMenu /\ UNCHANGED boothVars
+
+LeaveDirectionsMenu == Iface!LeaveDirectionsMenu /\ UNCHANGED boothVars
 
 Next ==
     \/ VEnter
@@ -42,14 +49,20 @@ Next ==
     \/ Vote
     \/ Confirm
     \/ Back
-    \/ ToDirectionMenu
-    \/ LeaveDirectionMenu
+    \/ EnterDirectionsMenu
+    \/ LeaveDirectionsMenu
 
 Spec == Init /\ [][Next]_vars
 
-TypeOK == Voting!TypeOK /\ Directions!TypeOK
-OnePersonInBooth == Voting!OnePersonInBooth
-NoVoteFlip == Voting!NoVoteFlip
-EOCannotConfirm == Voting!EOCannotConfirm
+TypeOK == Iface!TypeOK /\ Booth!TypeOK
+OnePersonInBooth == Booth!OnePersonInBooth
+
+NoVoteFlip ==
+    \/ confirmed = {"None"}
+    \/ \A c \in confirmed : c = voterChoice
+
+\* does not imply a true vote flip
+EOCannotConfirm == ~("eofficial" \in booth /\ state = "confirm")
+\*EOCannotConfirm == ~("eofficial" \in booth /\ state = "done")
 
 =============================================================================

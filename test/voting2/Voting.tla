@@ -4,7 +4,7 @@ VARIABLES state, booth, voterChoice, eoChoice, confirmed
 
 vars == <<state, booth, voterChoice, eoChoice, confirmed>>
 ifaceVars == <<state>>
-boothVars == <<booth, eoChoice, confirmed>>
+boothVars == <<booth, voterChoice, eoChoice, confirmed>>
 
 Iface == INSTANCE Interface
             WITH state <- state
