@@ -9,7 +9,6 @@ import java.util.Set;
 
 import tlc2.tool.ExtKripke;
 import tlc2.tool.StateVarType;
-import tlc2.tool.TLCState;
 import tlc2.Utils.Pair;
 
 
@@ -110,18 +109,17 @@ public class RobustDiffRep {
 	
 	private void createDiffStateRepFormula(final Set<String> posExamples, final TLC tlcTypeOK, final String groupName) {
     	final ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
-    	final Set<TLCState> stateSpace = stateSpaceKripke.reach();
-    	final Set<String> stateSpaceStrs = Utils.stateSetToStringSet(stateSpace);
+    	final Set<String> stateSpace = stateSpaceKripke.reach();
 
     	// diffRepStateStrs is the set of positive examples
     	// notDiffStateStrs is the set of negative examples
-    	final Set<String> negExamples = Utils.setMinus(stateSpaceStrs, posExamples);
+    	final Set<String> negExamples = Utils.setMinus(stateSpace, posExamples);
     	
     	// we can automatically extract types by looking at the states in stateSpace.
     	// there is no need to examine TypeOK
     	// type domains should be mutually exclusive; we issue a warning if they aren't
     	// TODO it would be a nice sanity check to make sure the vars in varTypes match those in tlc1 and tlc2
-    	final Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpaceStrs);
+    	final Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpace);
     	domainsAreMutuallyExclusiveCheck(varTypes);
     	
     	// in the posExamples, figure out which state vars may have multiple values.

@@ -105,11 +105,7 @@ public class Utils {
     	return elem;
     }
 	
-
-    public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(TLCState tlaState) {
-    	return extractKeyValuePairsFromState(normalizeStateString(tlaState.toString()));
-    }
-
+    
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {
     	ArrayList<Pair<String,String>> kvPairs = new ArrayList<>();
     	String[] conjuncts = tlaState.split(Pattern.quote("/\\"));
@@ -130,15 +126,6 @@ public class Utils {
 			System.err.println("Warning: found null valued state var!");
 		}
 		return new Pair<>(key,val);
-    }
-    
-    public static Set<String> stateSetToStringSet(Set<TLCState> src) {
-    	Set<String> dst = new HashSet<String>();
-    	for (TLCState s : src) {
-    		final String state = normalizeStateString(s.toString());
-    		dst.add(state);
-    	}
-    	return dst;
     }
     
     public static String normalizeStateString(String s) {

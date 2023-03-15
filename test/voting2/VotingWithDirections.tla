@@ -3,9 +3,9 @@
 VARIABLES state, booth, voterChoice, eoChoice, confirmed
 VARIABLES dirState
 
+vars == <<state, booth, voterChoice, eoChoice, confirmed, dirState>>
 votingVars == <<state, booth, voterChoice, eoChoice, confirmed>>
 dirVars == <<dirState>>
-vars == <<state, booth, voterChoice, eoChoice, confirmed, dirState>>
 
 Voting == INSTANCE Voting
               WITH state <- state,

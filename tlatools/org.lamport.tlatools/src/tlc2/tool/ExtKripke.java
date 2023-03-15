@@ -21,12 +21,12 @@ public class ExtKripke {
     	safety, error
     }
     
-    private Set<TLCState> initStates;
-    private Set<TLCState> allStates;
-    private Set<TLCState> badStates;
-    private Set<Pair<TLCState,TLCState>> delta;
-    private Map<Pair<TLCState,TLCState>, Action> deltaActions;
-    private Set<TLCState> envStates;
+    private Set<String> initStates;
+    private Set<String> allStates;
+    private Set<String> badStates;
+    private Set<Pair<String,String>> delta;
+    private Map<Pair<String,String>, String> deltaActions;
+    private Set<String> envStates;
 
     public ExtKripke() {
     	this.initStates = new HashSet<>();
@@ -59,16 +59,16 @@ public class ExtKripke {
     	}
     	
         // add env states. small optimization: we know that all env states are safe
-    	final Set<TLCState> srcMGoodStates = Utils.setMinus(srcM.allStates, srcM.badStates);
-    	for (final TLCState s : srcMGoodStates) {
+    	final Set<String> srcMGoodStates = Utils.setMinus(srcM.allStates, srcM.badStates);
+    	for (final String s : srcMGoodStates) {
     		if (refinedContainerContainsAbstractState(srcClosed.allStates, s)) {
     			this.envStates.add(s);
     		}
     	}
     }
     
-    private static boolean refinedContainerContainsAbstractState(final Set<TLCState> container, final TLCState abstrState) {
-    	for (final TLCState refinedState : container) {
+    private static boolean refinedContainerContainsAbstractState(final Set<String> container, final String abstrState) {
+    	for (final String refinedState : container) {
     		if (refinedImpliesAbstractState(refinedState, abstrState)) {
     			return true;
     		}
@@ -76,7 +76,7 @@ public class ExtKripke {
     	return false;
     }
     
-    private static boolean refinedImpliesAbstractState(final TLCState refinedState, final TLCState abstrState) {
+    private static boolean refinedImpliesAbstractState(final String refinedState, final String abstrState) {
     	final Set<Pair<String,String>> refinedKvPairs = new HashSet<>(Utils.extractKeyValuePairsFromState(refinedState));
     	final Set<Pair<String,String>> abstrKvPairs = new HashSet<>(Utils.extractKeyValuePairsFromState(abstrState));
     	return refinedKvPairs.containsAll(abstrKvPairs);
@@ -86,23 +86,31 @@ public class ExtKripke {
 
     // bad initial states are explicitly added (via addBadState()) in ModelChecker.java
     public void addInitState(TLCState s) {
-        allStates.add(s);
-        initStates.add(s);
+    	final String sName = Utils.normalizeStateString(s.toString());
+        allStates.add(sName);
+        initStates.add(sName);
     }
 
     public void addGoodState(TLCState s) {
-        allStates.add(s);
+    	final String sName = Utils.normalizeStateString(s.toString());
+        allStates.add(sName);
     }
 
     public void addBadState(TLCState s) {
-        allStates.add(s);
-        badStates.add(s);
+    	final String sName = Utils.normalizeStateString(s.toString());
+        allStates.add(sName);
+        badStates.add(sName);
     }
 
     public void addTransition(Action act, TLCState src, TLCState dst) {
-    	Pair<TLCState,TLCState> transition = new Pair<TLCState,TLCState>(src, dst);
+    	final String srcName = Utils.normalizeStateString(src.toString());
+    	final String dstName = Utils.normalizeStateString(dst.toString());
+    	final Pair<String,String> transition = new Pair<>(srcName, dstName);
+    	
+    	final String actName = act.getName().toString();
+    	Utils.assertNotNull(actName, "TLC added null action name to an ExtKripke instance!");
     	delta.add(transition);
-    	deltaActions.put(transition, act);
+    	deltaActions.put(transition, actName);
     }
     
     
@@ -116,18 +124,18 @@ public class ExtKripke {
     	return this.badStates.isEmpty();
     }
     
-    public Set<TLCState> reach() {
+    public Set<String> reach() {
     	return this.allStates;
     }
     
-    public boolean isBadState(final TLCState s) {
+    public boolean isBadState(final String s) {
     	return this.badStates.contains(s);
     }
     
     public ExtKripke createErrPre() {
-    	Set<TLCState> errStates = notAlwaysNotPhiStates();
-    	Set<Pair<TLCState,TLCState>> deltaErrSinks = createDeltaWithErrorSinks(badStates, delta);
-    	Set<Pair<TLCState,TLCState>> deltaErrPre = filterDeltaByStates(errStates, deltaErrSinks);
+    	Set<String> errStates = notAlwaysNotPhiStates();
+    	Set<Pair<String,String>> deltaErrSinks = createDeltaWithErrorSinks(badStates, delta);
+    	Set<Pair<String,String>> deltaErrPre = filterDeltaByStates(errStates, deltaErrSinks);
     	// no way to add SF yet
     	ExtKripke errPre = new ExtKripke();
     	errPre.initStates = Utils.intersection(this.initStates, errStates);
@@ -150,25 +158,25 @@ public class ExtKripke {
         StringBuilder builder = new StringBuilder();
 
         builder.append("NANPS\n");
-        for (TLCState s : this.notAlwaysNotPhiStates()) {
-        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
+        for (String s : this.notAlwaysNotPhiStates()) {
+        	builder.append("  " + s + "\n");
         }
 
         return builder.toString();
     }
     
     
-    public Set<TLCState> safetyBoundary() {
+    public Set<String> safetyBoundary() {
     	return calculateBoundary(BoundaryType.safety);
     }
     
-    public Set<TLCState> robustSafetyBoundary() {
+    public Set<String> robustSafetyBoundary() {
     	// the set of states that leave the env, but are guaranteed to be 1-step safe
-    	final Set<TLCState> nonEnvStates = Utils.setMinus(this.allStates, this.envStates);
+    	final Set<String> nonEnvStates = Utils.setMinus(this.allStates, this.envStates);
     	return Utils.setMinus(calculateBoundary(BoundaryType.safety, nonEnvStates), calculateBoundary(BoundaryType.safety, this.badStates));
     }
     
-    private Set<TLCState> errorBoundary() {
+    private Set<String> errorBoundary() {
     	return calculateBoundary(BoundaryType.error);
     }
     
@@ -183,9 +191,9 @@ public class ExtKripke {
     	// nonEnvStates = goodStates \cap envStates
     	// we have by assumption: envStates \subseteq goodStates
     	// so: badStates \subseteq nonEnvStates
-    	final Set<TLCState> nonEnvStates = Utils.setMinus(this.allStates, this.envStates);
-    	final Set<TLCState> goodNonEnvStates = Utils.setMinus(nonEnvStates, this.badStates);
-    	final Set<TLCState> envBoundaryStates = calculateBoundary(BoundaryType.safety, goodNonEnvStates);
+    	final Set<String> nonEnvStates = Utils.setMinus(this.allStates, this.envStates);
+    	final Set<String> goodNonEnvStates = Utils.setMinus(nonEnvStates, this.badStates);
+    	final Set<String> envBoundaryStates = calculateBoundary(BoundaryType.safety, goodNonEnvStates);
     	Map<String, Set<String>> leaveEnv = boundaryPerAction(envBoundaryStates, goodNonEnvStates);
     	
     	// so far we have calculated (state,action) pairs such that there EXISTS a world in which the action
@@ -213,23 +221,23 @@ public class ExtKripke {
     }
     
 
-    private Set<TLCState> calculateBoundary(BoundaryType boundaryType) {
+    private Set<String> calculateBoundary(BoundaryType boundaryType) {
     	return calculateBoundary(boundaryType, this.badStates);
     }
     
     // invariant: all states in frontier are safe (not in errorStates)
-    private Set<TLCState> calculateBoundary(final BoundaryType boundaryType, final Set<TLCState> errorStates) {
-    	Set<TLCState> goodInitStates = Utils.setMinus(this.initStates, errorStates);
-    	Set<TLCState> explored = new HashSet<>(goodInitStates);
-    	Set<TLCState> frontier = new HashSet<>(goodInitStates);
-    	Set<TLCState> boundary = (boundaryType.equals(BoundaryType.safety)) ?
+    private Set<String> calculateBoundary(final BoundaryType boundaryType, final Set<String> errorStates) {
+    	Set<String> goodInitStates = Utils.setMinus(this.initStates, errorStates);
+    	Set<String> explored = new HashSet<>(goodInitStates);
+    	Set<String> frontier = new HashSet<>(goodInitStates);
+    	Set<String> boundary = (boundaryType.equals(BoundaryType.safety)) ?
     			new HashSet<>() : Utils.intersection(this.initStates, errorStates);
     	
     	while (!frontier.isEmpty()) {
-    		Set<TLCState> addToFrontier = new HashSet<TLCState>();
-	    	for (TLCState s : frontier) {
+    		Set<String> addToFrontier = new HashSet<String>();
+	    	for (String s : frontier) {
 	    		explored.add(s);
-	    		for (TLCState t : this.succ(s)) {
+	    		for (String t : this.succ(s)) {
 	    			if (errorStates.contains(t)) {
 	    				// the state which we add to the boundary depends on whether we're calculating:
 	    				// the safety boundary or (else) the error boundary
@@ -253,32 +261,31 @@ public class ExtKripke {
     	return boundary;
     }
     
-    private Map<String, Set<String>> boundaryPerAction(final Set<TLCState> entireBoundary) {
+    private Map<String, Set<String>> boundaryPerAction(final Set<String> entireBoundary) {
     	return boundaryPerAction(entireBoundary, this.badStates);
     }
         
-    private Map<String, Set<String>> boundaryPerAction(final Set<TLCState> entireBoundary, final Set<TLCState> errorStates) {
+    private Map<String, Set<String>> boundaryPerAction(final Set<String> entireBoundary, final Set<String> errorStates) {
     	Map<String, Set<String>> groupedBoundaries = new HashMap<>();
-    	for (TLCState s : entireBoundary) {
-			final String boundaryState = Utils.normalizeStateString(s.toString());
-    		for (TLCState t : succ(s)) {
-    			Pair<TLCState,TLCState> transition = new Pair<>(s,t);
+    	for (String s : entireBoundary) {
+			final String boundaryState = s;
+    		for (String t : succ(s)) {
+    			Pair<String,String> transition = new Pair<>(s,t);
     			if (this.delta.contains(transition) && errorStates.contains(t)) {
-    				final Action act = this.deltaActions.get(transition);
-    				final String actName = act.getName().toString();
-    				if (!groupedBoundaries.containsKey(actName)) {
-    					groupedBoundaries.put(actName, new HashSet<>());
+    				final String act = this.deltaActions.get(transition);
+    				if (!groupedBoundaries.containsKey(act)) {
+    					groupedBoundaries.put(act, new HashSet<>());
     				}
-    				groupedBoundaries.get(actName).add(boundaryState);
+    				groupedBoundaries.get(act).add(boundaryState);
     			}
     		}
     	}
     	return groupedBoundaries;
     }
     
-    private Set<TLCState> succ(TLCState s) {
-    	Set<TLCState> succStates = new HashSet<TLCState>();
-    	for (Pair<TLCState,TLCState> t : this.delta) {
+    private Set<String> succ(String s) {
+    	Set<String> succStates = new HashSet<String>();
+    	for (Pair<String,String> t : this.delta) {
     		if (s.equals(t.first)) {
     			succStates.add(t.second);
     		}
@@ -286,10 +293,10 @@ public class ExtKripke {
     	return succStates;
     }
     
-    private Set<TLCState> notAlwaysNotPhiStates() {
-    	Set<TLCState> states = new HashSet<TLCState>();
-    	Set<Pair<TLCState,TLCState>> inverseDelta = invertTransitionRelation(delta);
-    	for (TLCState errState : this.errorBoundary()) {
+    private Set<String> notAlwaysNotPhiStates() {
+    	Set<String> states = new HashSet<String>();
+    	Set<Pair<String,String>> inverseDelta = invertTransitionRelation(delta);
+    	for (String errState : this.errorBoundary()) {
     		// perform a DFS (on inverse delta) from errState. add every state we find to "states"
     		// discoverDFS will mutate "states"
     		discoverDFS(errState, inverseDelta, states);
@@ -297,9 +304,9 @@ public class ExtKripke {
     	return states;
     }
 
-    private static Set<Pair<TLCState,TLCState>> filterDeltaByStates(Set<TLCState> states, Set<Pair<TLCState,TLCState>> delta) {
-    	Set<Pair<TLCState,TLCState>> deltaFiltered = new HashSet<Pair<TLCState,TLCState>>();
-    	for (Pair<TLCState,TLCState> t : delta) {
+    private static Set<Pair<String,String>> filterDeltaByStates(Set<String> states, Set<Pair<String,String>> delta) {
+    	Set<Pair<String,String>> deltaFiltered = new HashSet<Pair<String,String>>();
+    	for (Pair<String,String> t : delta) {
     		if (states.contains(t.first) && states.contains(t.second)) {
     			deltaFiltered.add(t);
     		}
@@ -307,9 +314,9 @@ public class ExtKripke {
     	return deltaFiltered;
     }
     
-    private static Set<Pair<TLCState,TLCState>> createDeltaWithErrorSinks(Set<TLCState> errStates, Set<Pair<TLCState,TLCState>> delta) {
-    	Set<Pair<TLCState,TLCState>> deltaWithErrorSinks = new HashSet<Pair<TLCState,TLCState>>();
-    	for (Pair<TLCState,TLCState> t : delta) {
+    private static Set<Pair<String,String>> createDeltaWithErrorSinks(Set<String> errStates, Set<Pair<String,String>> delta) {
+    	Set<Pair<String,String>> deltaWithErrorSinks = new HashSet<Pair<String,String>>();
+    	for (Pair<String,String> t : delta) {
     		if (!errStates.contains(t.first)) {
     			deltaWithErrorSinks.add(t);
     		}
@@ -317,22 +324,22 @@ public class ExtKripke {
     	return deltaWithErrorSinks;
     }
     
-    private static Set<Pair<TLCState,TLCState>> invertTransitionRelation(Set<Pair<TLCState,TLCState>> d) {
-    	Set<Pair<TLCState,TLCState>> inverse = new HashSet<Pair<TLCState,TLCState>>();
-    	for (Pair<TLCState,TLCState> t : d) {
-    		inverse.add(new Pair<TLCState,TLCState>(t.second, t.first));
+    private static Set<Pair<String,String>> invertTransitionRelation(Set<Pair<String,String>> d) {
+    	Set<Pair<String,String>> inverse = new HashSet<Pair<String,String>>();
+    	for (Pair<String,String> t : d) {
+    		inverse.add(new Pair<String,String>(t.second, t.first));
     	}
     	return inverse;
     }
     
-    private static void discoverDFS(TLCState start, Set<Pair<TLCState,TLCState>> delta, Set<TLCState> states) {
+    private static void discoverDFS(String start, Set<Pair<String,String>> delta, Set<String> states) {
     	// base case
     	if (states.contains(start)) {
     		return;
     	}
     	
     	states.add(start);
-    	for (Pair<TLCState,TLCState> t : delta) {
+    	for (Pair<String,String> t : delta) {
     		if (start.equals(t.first)) {
     			discoverDFS(t.second, delta, states);
     		}
@@ -342,38 +349,37 @@ public class ExtKripke {
     // compute the representation for \eta(m2,P) - \eta(m1,P)
     // note: \eta(m2,P) - \eta(m1,P) = beh(m1_err) - beh(m2_err)
     // i.e. we find all erroneous behaviors of m1 that are NOT erroneous behaviors of m2
-    public static Set<Pair<TLCState,String>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2, final ExtKripke refKripke) {
-    	final Set<TLCState> mutualReach = mutualReach(m1, m2);
-    	final Set<Pair<TLCState,TLCState>> m1MinusM2Delta = Utils.setMinus(m1.delta, m2.delta);
-    	final Set<Pair<TLCState,String>> rep = new HashSet<>();
-		for (final Pair<TLCState,TLCState> transition : m1MinusM2Delta) {
-			final TLCState s = transition.first;
-			final TLCState t = transition.second;
+    public static Set<Pair<String,String>> behaviorDifferenceRepresentation(final ExtKripke m1, final ExtKripke m2, final ExtKripke refKripke) {
+    	final Set<String> mutualReach = mutualReach(m1, m2);
+    	final Set<Pair<String,String>> m1MinusM2Delta = Utils.setMinus(m1.delta, m2.delta);
+    	final Set<Pair<String,String>> rep = new HashSet<>();
+		for (final Pair<String,String> transition : m1MinusM2Delta) {
+			final String s = transition.first;
+			final String t = transition.second;
 			if (mutualReach.contains(s) && refKripke.isBadState(t)) {
 				// found an outgoing transition (of ONLY m1) from s to a bad state
-				final Action act = m1.deltaActions.get(transition);
-				final String actName = act.getName().toString();
-				rep.add(new Pair<>(s, actName));
+				final String act = m1.deltaActions.get(transition);
+				rep.add(new Pair<>(s, act));
 			}
 		}
     	return rep;
     }
     
-    private static Set<TLCState> mutualReach(final ExtKripke m1, final ExtKripke m2) {
-    	Set<TLCState> reach = new HashSet<TLCState>();
-    	Set<TLCState> mutualInit = Utils.intersection(m1.initStates, m2.initStates);
-    	Set<Pair<TLCState,TLCState>> mutualDelta = Utils.intersection(m1.delta, m2.delta);
-    	for (TLCState init : mutualInit) {
+    private static Set<String> mutualReach(final ExtKripke m1, final ExtKripke m2) {
+    	Set<String> reach = new HashSet<String>();
+    	Set<String> mutualInit = Utils.intersection(m1.initStates, m2.initStates);
+    	Set<Pair<String,String>> mutualDelta = Utils.intersection(m1.delta, m2.delta);
+    	for (String init : mutualInit) {
         	mutualReach(mutualDelta, init, reach);
     	}
     	return reach;
     }
     
-    private static void mutualReach(final Set<Pair<TLCState,TLCState>> mutualDelta, final TLCState init, Set<TLCState> reach) {
+    private static void mutualReach(final Set<Pair<String,String>> mutualDelta, final String init, Set<String> reach) {
     	reach.add(init);
-    	for (Pair<TLCState,TLCState> t : mutualDelta) {
+    	for (Pair<String,String> t : mutualDelta) {
     		if (init.equals(t.first)) {
-    			TLCState succ = t.second;
+    			String succ = t.second;
     			if (!reach.contains(succ)) {
     				mutualReach(mutualDelta, succ, reach);
     			}
@@ -425,10 +431,10 @@ public class ExtKripke {
 
     private String nextExpr() {
     	ArrayList<String> strTransitions = new ArrayList<String>();
-    	for (Pair<TLCState,TLCState> t : delta) {
-    		String pre = Utils.normalizeStateString(t.first.toString());
+    	for (Pair<String,String> t : delta) {
+    		String pre = t.first;
     		//String post = "(" + format(t.second.toString()) + ")'";
-    		String post = primeVars(Utils.normalizeStateString(t.second.toString()));
+    		String post = primeVars(t.second);
     		String action = pre + " /\\ " + post;
     		strTransitions.add(action);
     	}
@@ -443,10 +449,10 @@ public class ExtKripke {
     	return String.join("' =", strs);
     }
     
-    private static ArrayList<String> statesToStringList(Set<TLCState> set) {
+    private static ArrayList<String> statesToStringList(Set<String> set) {
     	ArrayList<String> arr = new ArrayList<String>();
-    	for (TLCState s : set) {
-    		arr.add(Utils.normalizeStateString(s.toString()));
+    	for (String s : set) {
+    		arr.add(s);
     	}
     	return arr;
     }
@@ -456,28 +462,27 @@ public class ExtKripke {
         StringBuilder builder = new StringBuilder();
 
         builder.append("Init States\n");
-        for (TLCState s : initStates) {
-        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
+        for (String s : initStates) {
+        	builder.append("  " + s + "\n");
         }
 
         builder.append("All States\n");
-        for (TLCState s : allStates) {
-        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
+        for (String s : allStates) {
+        	builder.append("  " + s + "\n");
         }
 
         builder.append("Bad States\n");
-        for (TLCState s : badStates) {
-        	builder.append("  " + Utils.normalizeStateString(s.toString()) + "\n");
+        for (String s : badStates) {
+        	builder.append("  " + s + "\n");
         }
 
         builder.append("Delta\n");
-        for (Pair<TLCState,TLCState> transition : delta) {
-        	TLCState src = transition.first;
-        	TLCState dst = transition.second;
-        	Action act = deltaActions.get(transition);
-        	if (act != null) {
-        		builder.append("  " + act.getName() + ": (" + Utils.normalizeStateString(src.toString()) + ", " + Utils.normalizeStateString(dst.toString()) + ")\n");
-        	}
+        for (Pair<String,String> transition : delta) {
+        	String src = transition.first;
+        	String dst = transition.second;
+        	String act = deltaActions.get(transition);
+        	Utils.assertNotNull(act, "Found null action!");
+    		builder.append("  " + act + ": (" + src + ", " + dst + ")\n");
         }
 
         return builder.toString();
