@@ -3,6 +3,7 @@
 rob="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/robustness.py"
 test_dir_coff="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/coffee_tea/"
 test_dir_voting="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/voting/"
+test_dir_voting2="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/voting2/"
 test_dir_therac="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/therac25/"
 test_dir_fixed_mutex="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/fixed_mutex/"
 test_dir_abp="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/abp/"
@@ -47,7 +48,6 @@ gen_test_suite_env() {
     name="${file1}_${file2}"
     expected_file="expected_env/${name}.txt"
     echo "writing ${expected_file}"
-    echo python3 "${rob}" --cleanup --outdir out --spec "${tla_file1}" --spec2 "${tla_file2}" --env "${expected_file}"
     python3 "${rob}" --cleanup --outdir out --spec "${tla_file1}" --spec2 "${tla_file2}" --env > "${expected_file}"
     popd
 }
@@ -60,6 +60,9 @@ gen_test_suite_env "${test_dir_coff}" "CoffeeTeaSmall" "ClosedCTH"
 voting_tests=("Voting" "VotingEOCannotCfm" "SecureVoting")
 gen_test_suite "${test_dir_voting}" "${voting_tests[@]}"
 gen_test_suite_env "${test_dir_voting}" "Voting" "ClosedVoting"
+
+voting2_tests=("Voting" "VotingImproved")
+gen_test_suite "${test_dir_voting2}" "${voting2_tests[@]}"
 
 therac_tests=("Therac25" "Therac20")
 gen_test_suite "${test_dir_therac}" "${therac_tests[@]}"
