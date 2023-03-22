@@ -1,39 +1,47 @@
 ------------------------------- MODULE TM ----------------------------- 
 
-RMs == {"rm1", "rm2", "rm3"}
+VARIABLES tmState, tmPrepared
 
-VARIABLES tmState, tmPrepared, msgs
-
-Message ==
-  [type : {"Prepared"}, rm : RMs]  \cup  [type : {"Commit", "Abort"}]
+RMs == {"rm1", "rm2"}
 
 Init ==   
   /\ tmState = "init"
   /\ tmPrepared = {}
-  /\ msgs = {}
 
-TMRcvPrepared(rm) ==
+RcvPrepare1(rm) ==
   /\ tmState = "init"
-  /\ [type |-> "Prepared", rm |-> rm] \in msgs
   /\ tmPrepared' = tmPrepared \cup {rm}
-  /\ UNCHANGED <<tmState, msgs>>
+  /\ UNCHANGED <<tmState>>
 
-TMCommit ==
+RcvPrepare2(rm) ==
   /\ tmState = "init"
+  /\ tmPrepared' = tmPrepared \cup {rm}
+  /\ UNCHANGED <<tmState>>
+
+SndCommit1 ==
+  /\ tmState \in {"init", "commmitted"}
   /\ tmPrepared = RMs
   /\ tmState' = "committed"
-  /\ msgs' = msgs \cup {[type |-> "Commit"]}
   /\ UNCHANGED <<tmPrepared>>
 
-TMAbort ==
-  /\ tmState = "init"
+SndCommit2 ==
+  /\ tmState \in {"init", "commmitted"}
+  /\ tmPrepared = RMs
+  /\ tmState' = "committed"
+  /\ UNCHANGED <<tmPrepared>>
+
+SndAbort1 ==
+  /\ tmState \in {"init", "aborted"}
   /\ tmState' = "aborted"
-  /\ msgs' = msgs \cup {[type |-> "Abort"]}
+  /\ UNCHANGED <<tmPrepared>>
+
+SndAbort2 ==
+  /\ tmState \in {"init", "aborted"}
+  /\ tmState' = "aborted"
   /\ UNCHANGED <<tmPrepared>>
 
 TypeOK ==  
   /\ tmState \in {"init", "committed", "aborted"}
   /\ tmPrepared \subseteq RMs
-  /\ msgs \subseteq Message
 
 =============================================================================
