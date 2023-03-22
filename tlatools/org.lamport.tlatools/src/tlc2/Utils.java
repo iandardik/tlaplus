@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import tlc2.tool.EKState;
 import tlc2.tool.TLCState;
 
 public class Utils {
@@ -106,6 +108,10 @@ public class Utils {
     }
 	
     
+    public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(EKState tlaState) {
+    	return extractKeyValuePairsFromState(tlaState.toString());
+    }
+    
     public static ArrayList<Pair<String,String>> extractKeyValuePairsFromState(String tlaState) {
     	ArrayList<Pair<String,String>> kvPairs = new ArrayList<>();
     	String[] conjuncts = tlaState.split(Pattern.quote("/\\"));
@@ -160,6 +166,23 @@ public class Utils {
     	ArrayList<T> dst = new ArrayList<T>();
     	for (int i = 0; i < src.length; ++i) {
     		dst.add(src[i]);
+    	}
+    	return dst;
+    }
+    
+    public static <T> List<String> toStringList(Collection<T> src) {
+    	List<String> dst = new ArrayList<>();
+    	for (T e : src) {
+    		dst.add(e.toString());
+    	}
+    	return dst;
+    }
+    
+    public static <T> String[] toStringArray(Collection<T> src) {
+    	String[] dst = new String[src.size()];
+    	int i = 0;
+    	for (T e : src) {
+    		dst[i++] = e.toString();
     	}
     	return dst;
     }

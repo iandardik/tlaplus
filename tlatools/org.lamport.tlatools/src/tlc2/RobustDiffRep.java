@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import tlc2.tool.EKState;
 import tlc2.tool.ExtKripke;
 import tlc2.tool.StateVarType;
 import tlc2.Utils.Pair;
@@ -65,12 +66,12 @@ public class RobustDiffRep {
 	private final String specName;
 	private final SpecScope specScope;
 	private final String outputLocation;
-	private final Set<String> safetyBoundary;
-	private final Map<String, Set<String>> boundariesByGroup;
+	private final Set<EKState> safetyBoundary;
+	private final Map<String, Set<EKState>> boundariesByGroup;
 	private Map<String, String> jsonStrs;
 	private Map<String, List<String>> jsonLists;
 	
-	public RobustDiffRep(String specName, SpecScope scope, String outputLoc, Set<String> safetyBoundary, Map<String, Set<String>> boundariesByGroup,
+	public RobustDiffRep(String specName, SpecScope scope, String outputLoc, Set<EKState> safetyBoundary, Map<String, Set<EKState>> boundariesByGroup,
 			Map<String,String> jsonStrs, Map<String, List<String>> jsonLists) {
 		this.specName = specName;
 		this.specScope = scope;
@@ -90,11 +91,11 @@ public class RobustDiffRep {
 	public void writeBoundary() {
 		final String fileKeyBase = keyForSpecScope(specScope, DIFF_REP_FILE, DIFF_REP_FILE1, DIFF_REP_FILE2);
 		for (final String groupName : this.boundariesByGroup.keySet()) {
-			final Set<String> group = this.boundariesByGroup.get(groupName);
+			final Set<EKState> group = this.boundariesByGroup.get(groupName);
 			final String fileName = this.specName + UNDERSCORE + groupName + UNDERSCORE + DIFF_REP + DOT_TXT;
 			final String filePath = this.outputLocation + fileName;
 			final String diffRepFileNameKey = fileKeyBase + UNDERSCORE + groupName;
-	    	final String output = String.join(NEW_LINE, group);
+	    	final String output = String.join(NEW_LINE, Utils.toStringArray(group));
 	    	Utils.writeFile(filePath, output);
 	    	this.jsonStrs.put(diffRepFileNameKey, filePath);
 		}
@@ -102,18 +103,18 @@ public class RobustDiffRep {
 	
 	public void writeBoundaryFOLSeparatorFile(final TLC tlcTypeOK) {
 		for (final String groupName : this.boundariesByGroup.keySet()) {
-			final Set<String> group = this.boundariesByGroup.get(groupName);
+			final Set<EKState> group = this.boundariesByGroup.get(groupName);
 			createDiffStateRepFormula(group, tlcTypeOK, groupName);
 		}
 	}
 	
-	private void createDiffStateRepFormula(final Set<String> posExamples, final TLC tlcTypeOK, final String groupName) {
+	private void createDiffStateRepFormula(final Set<EKState> posExamples, final TLC tlcTypeOK, final String groupName) {
     	final ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
-    	final Set<String> stateSpace = stateSpaceKripke.reach();
+    	final Set<EKState> stateSpace = stateSpaceKripke.reach();
 
     	// diffRepStateStrs is the set of positive examples
     	// notDiffStateStrs is the set of negative examples
-    	final Set<String> negExamples = Utils.setMinus(stateSpace, posExamples);
+    	final Set<EKState> negExamples = Utils.setMinus(stateSpace, posExamples);
     	
     	// we can automatically extract types by looking at the states in stateSpace.
     	// there is no need to examine TypeOK
@@ -191,7 +192,7 @@ public class RobustDiffRep {
         return path;
     }
     
-    private static String buildAndWriteSeparatorFOL(final Set<String> posExamples, final Set<String> negExamples, final Map<String, StateVarType> varTypes,
+    private static String buildAndWriteSeparatorFOL(final Set<EKState> posExamples, final Set<EKState> negExamples, final Map<String, StateVarType> varTypes,
     		final Set<String> nonConstValueVars, final Set<StateVarType> nonConstValueTypes, final Map<String,String> valueToConstantMap,
     		final String specName, final String groupName, final String outputLoc) {
     	Set<String> consts = new HashSet<>();
@@ -235,12 +236,12 @@ public class RobustDiffRep {
     	// models
     	boolean atLeastOneNegExample = false;
     	Set<String> posModels = new HashSet<>();
-    	for (String s : posExamples) {
+    	for (EKState s : posExamples) {
     		final String pos = toSeparatorModel(s, "+", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
     		posModels.add(pos);
     		builder.append(pos);
     	}
-    	for (String s : negExamples) {
+    	for (EKState s : negExamples) {
     		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
     		if (!posModels.contains(neg.replace('-', '+'))) {
     			atLeastOneNegExample = true;
@@ -292,7 +293,7 @@ public class RobustDiffRep {
     	}
     }
     
-    private static String toSeparatorModel(final String tlaState, final String label, final Set<String> modelElements,
+    private static String toSeparatorModel(final EKState tlaState, final String label, final Set<String> modelElements,
     		final Set<String> modelElementDefs, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
     	final String sms = toSeparatorModelString(tlaState, nonConstValueVars, valueToConstantMap);
     	final String elementsStr = String.join(" ", modelElements);
@@ -310,7 +311,7 @@ public class RobustDiffRep {
         return builder.toString();
     }
     
-    private static String toSeparatorModelString(final String tlaState, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
+    private static String toSeparatorModelString(final EKState tlaState, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
     	ArrayList<String> separatorConjuncts = new ArrayList<>();
     	ArrayList<Pair<String,String>> stateAssignments = Utils.extractKeyValuePairsFromState(tlaState);
     	for (Pair<String,String> assg : stateAssignments) {

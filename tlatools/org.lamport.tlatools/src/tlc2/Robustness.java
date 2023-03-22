@@ -10,6 +10,7 @@ import java.util.Set;
 
 import tlc2.RobustDiffRep.SpecScope;
 import tlc2.tool.Action;
+import tlc2.tool.EKState;
 import tlc2.tool.ExtKripke;
 import tlc2.Utils.Pair;
 import tlc2.tool.impl.FastTool;
@@ -177,12 +178,12 @@ public class Robustness {
     }
     
     private static void computeSpecDiffRep(final String tlaFile, final TLC tlc, final ExtKripke kripke, final String outputLoc,
-    		final Map<String, Set<String>> safetyBoundaryByGroup,
+    		final Map<String, Set<EKState>> safetyBoundaryByGroup,
     		Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
     	jsonStrs.put(SPEC_IS_SAFE, kripke.isSafe() ? TRUE : FALSE);
     	
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
-    	final Set<String> safetyBoundary = kripke.safetyBoundary();
+    	final Set<EKState> safetyBoundary = kripke.safetyBoundary();
     	RobustDiffRep diffRep = new RobustDiffRep(tlc.getSpecName(), SpecScope.Spec, outputLoc, safetyBoundary, safetyBoundaryByGroup, jsonStrs, jsonLists);
     	
     	if (!kripke.isSafe()) {
@@ -226,11 +227,11 @@ public class Robustness {
     		final ExtKripke errPre1, final ExtKripke errPost1, final ExtKripke errPre2, final ExtKripke errPost2,
     		final TLC tlc1, final TLC tlc2, final String refSpec, final String outputLoc,
     		final SpecScope specScope, Map<String,String> jsonStrs, Map<String,List<String>> jsonLists) {
-    	final Set<Pair<String,String>> diffRepSet = Utils.union(
+    	final Set<Pair<EKState,String>> diffRepSet = Utils.union(
     			ExtKripke.behaviorDifferenceRepresentation(errPre1, errPre2, refKripke),
     			ExtKripke.behaviorDifferenceRepresentation(errPost1, errPost2, refKripke));
-    	final Set<String> diffRepStates = Utils.projectFirst(diffRepSet);
-    	final Map<String, Set<String>> diffRepStatesByGroup = groupTheDiffRep(diffRepSet, GROUP_DIFF_REP_BY_ACTION);
+    	final Set<EKState> diffRepStates = Utils.projectFirst(diffRepSet);
+    	final Map<String, Set<EKState>> diffRepStatesByGroup = groupTheDiffRep(diffRepSet, GROUP_DIFF_REP_BY_ACTION);
 
     	// create diffRep before the 'if' to make sure we write whether the safetyBoundary is empty or not
     	RobustDiffRep diffRep = new RobustDiffRep(refSpec, specScope, outputLoc, diffRepStates, diffRepStatesByGroup, jsonStrs, jsonLists);
@@ -253,12 +254,12 @@ public class Robustness {
     	}
     }
     
-    private static Map<String, Set<String>> groupTheDiffRep(final Set<Pair<String,String>> diffRepSet, final boolean groupByAction) {
+    private static Map<String, Set<EKState>> groupTheDiffRep(final Set<Pair<EKState,String>> diffRepSet, final boolean groupByAction) {
     	if (groupByAction) {
-    		Map<String, Set<String>> diffRepGroups = new HashMap<>();
-    		for (final Pair<String,String> diffRep : diffRepSet) {
+    		Map<String, Set<EKState>> diffRepGroups = new HashMap<>();
+    		for (final Pair<EKState,String> diffRep : diffRepSet) {
     			final String group = diffRep.second;
-    			final String state = diffRep.first;
+    			final EKState state = diffRep.first;
     			if (!diffRepGroups.containsKey(group)) {
     				diffRepGroups.put(group, new HashSet<>());
     			}
@@ -267,8 +268,8 @@ public class Robustness {
     		return diffRepGroups;
     	}
     	else {
-        	final Set<String> diffRepStates = Utils.projectFirst(diffRepSet);
-			Map<String, Set<String>> singleton = new HashMap<>();
+        	final Set<EKState> diffRepStates = Utils.projectFirst(diffRepSet);
+			Map<String, Set<EKState>> singleton = new HashMap<>();
 			singleton.put(ALL, diffRepStates);
 			return singleton;
     	}

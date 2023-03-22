@@ -42,7 +42,7 @@ public class StateVarType {
 	}
 
 	
-    public static Map<String, StateVarType> determineVarTypes(Set<String> stateSpace) {
+    public static Map<String, StateVarType> determineVarTypes(Set<EKState> stateSpace) {
     	// now that all vars are grouped by common domain, we can assign an official type
     	int typeNum = 1;
     	Map<String, StateVarType> varTypes = new HashMap<>();
@@ -57,7 +57,7 @@ public class StateVarType {
     	return varTypes;
     }
     
-    public static Set<StateVarType> determineTypes(Set<String> stateSpace) {
+    public static Set<StateVarType> determineTypes(Set<EKState> stateSpace) {
     	// now that all vars are grouped by common domain, we can assign an official type
     	int typeNum = 1;
     	Set<StateVarType> types = new HashSet<>();
@@ -69,10 +69,10 @@ public class StateVarType {
     	return types;
     }
     
-	private static List< Pair<Set<String>, Set<String>> > domainAndVarsList(Set<String> stateSpace) {
+	private static List< Pair<Set<String>, Set<String>> > domainAndVarsList(Set<EKState> stateSpace) {
     	// determine the domain for each state var
     	Map<String, Set<String>> varDomain = new HashMap<>();
-    	for (String state : stateSpace) {
+    	for (EKState state : stateSpace) {
     		ArrayList<Pair<String,String>> stateAssignments = Utils.extractKeyValuePairsFromState(state);
     		for (Pair<String,String> assg : stateAssignments) {
     			final String var = assg.first;
