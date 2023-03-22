@@ -5,11 +5,18 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import tlc2.tool.EKState;
 import tlc2.tool.ExtKripke;
+import tlc2.tool.StateVarBasicType;
+import tlc2.tool.StateVarFunctionType;
 import tlc2.tool.StateVarType;
+import tlc2.tool.StateVariable;
 import tlc2.Utils.Pair;
 
 
@@ -111,35 +118,63 @@ public class RobustDiffRep {
 	private void createDiffStateRepFormula(final Set<EKState> posExamples, final TLC tlcTypeOK, final String groupName) {
     	final ExtKripke stateSpaceKripke = tlcTypeOK.getKripke();
     	final Set<EKState> stateSpace = stateSpaceKripke.reach();
+    	
+    	// we pull the domain of every var from the entire state space
+    	final Set<StateVariable> allStateVars = StateVariable.getStateVariables(stateSpace);
+    	
+    	// we decide which values are "const" from the posExamples. the idea here is that if
+    	// a state variable has the same value in every positive example, then the constraint
+    	// for the state variable is obvious: it's just the "const" value.
+    	// in practice this is very nie because it reduces the burden of the FOL sep tool
+    	// (since the tool doesn't tend to work well for large/complicated tasks).
+    	final Set<Pair<String, String>> posExampleVarValues = posExamples
+    			.stream()
+    			.map(ex -> Utils.extractKeyValuePairsFromState(ex))
+    			.flatMap(List::stream)
+    			.collect(Collectors.toSet());
+    	
+    	// we also look at the domain of each variable restricted to the posExamples, but this
+    	// is ONLY for figuring out whether each variable has a const value or not.
+    	Map<String,Set<String>> posExampleVarDomains = new HashMap<>();
+    	for (final Pair<String, String> kv : posExampleVarValues) {
+    		final String var = kv.first;
+    		final String val = kv.second;
+    		if (!posExampleVarDomains.containsKey(var)) {
+    			posExampleVarDomains.put(var, new HashSet<>());
+    		}
+    		posExampleVarDomains.get(var).add(val);
+    	}
+    	
+    	// the set of state vars with non-const values, i.e. the domain has more than one element
+    	// when we look through the posExamples.
+    	final Set<String> nonConstValueVarStrs = posExampleVarDomains
+    			.entrySet()
+    			.stream()
+    			.filter(e -> e.getValue().size() > 1)
+    			.map(e -> e.getKey())
+    			.collect(Collectors.toSet());
+    	// same as nonConstValueVarStrs, but we collect the StateVariable objects
+    	final Set<StateVariable> nonConstValueVars = allStateVars
+    			.stream()
+    			.filter(v -> nonConstValueVarStrs.contains(v.getName()))
+    			.collect(Collectors.toSet());
+    	// even though the "const value" vars have one value in the posExamples, the state var
+    	// may have a domain larger than one element. therefore we need to track which "const value"
+    	// we want when writing out the const-value var info.
+    	final Map<String, String> constValueValues = posExampleVarDomains
+    			.entrySet()
+    			.stream()
+    			.filter(e -> e.getValue().size() == 1)
+    			.collect(Collectors.toMap(e -> e.getKey(), e -> Utils.singletonGetElement(e.getValue())));
 
     	// diffRepStateStrs is the set of positive examples
     	// notDiffStateStrs is the set of negative examples
     	final Set<EKState> negExamples = Utils.setMinus(stateSpace, posExamples);
-    	
-    	// we can automatically extract types by looking at the states in stateSpace.
-    	// there is no need to examine TypeOK
-    	// type domains should be mutually exclusive; we issue a warning if they aren't
-    	// TODO it would be a nice sanity check to make sure the vars in varTypes match those in tlc1 and tlc2
-    	final Map<String, StateVarType> varTypes = StateVarType.determineVarTypes(stateSpace);
-    	domainsAreMutuallyExclusiveCheck(varTypes);
-    	
-    	// in the posExamples, figure out which state vars may have multiple values.
-    	// we will then leverage the FOL separator tool to create a formula that describes these values.
-    	// we abuse the word "type" in StateVarType here.
-    	final Map<String, StateVarType> posExampleVarDomains = StateVarType.determineVarTypes(posExamples);
-    	Set<StateVarType> nonConstValueTypes = new HashSet<>();
-    	Set<String> nonConstValueVars = new HashSet<>();
-    	Set<String> constValueVars = new HashSet<>();
-    	Map<String, String> constValueValues = new HashMap<>();
-    	determineConstAndNonConstVars(posExampleVarDomains, varTypes, nonConstValueTypes, nonConstValueVars, constValueVars, constValueValues);
-    	
-    	// translate (TLA+ state var values) -> (FOL Separator constants)
-    	final Map<String,String> valueToConstantMap = tlaValueToSeparatorConstant(nonConstValueTypes);
-    	
-    	if (constValueVars.size() > 0) {
+
+    	if (!constValueValues.isEmpty()) {
     		final String constValueConstraintKeyBase = RobustDiffRep.keyForSpecScope(specScope, CONST_VALUE_CONSTRAINT, CONST_VALUE_CONSTRAINT1, CONST_VALUE_CONSTRAINT2);
     		final String constValueConstraintKey = constValueConstraintKeyBase + UNDERSCORE + groupName;
-    		final String constValueConstraint = buildConstValueConstraint(constValueVars, constValueValues, this.jsonStrs);
+    		final String constValueConstraint = buildConstValueConstraint(constValueValues, this.jsonStrs);
             this.jsonStrs.put(constValueConstraintKey, constValueConstraint);
     	}
     	if (nonConstValueVars.size() > 0) {
@@ -147,13 +182,12 @@ public class RobustDiffRep {
     		final String sortsMapFileKeyBase = RobustDiffRep.keyForSpecScope(specScope, SORTS_MAP_FILE, SORTS_MAP1_FILE, SORTS_MAP2_FILE);
     		final String separatorFileKey = separatorFileKeyBase + UNDERSCORE + groupName;
     		final String sortsMapFileKey = sortsMapFileKeyBase + UNDERSCORE + groupName;
-        	final String separatorFile = buildAndWriteSeparatorFOL(posExamples, negExamples, varTypes, nonConstValueVars, nonConstValueTypes,
-        			valueToConstantMap, this.specName, groupName, this.outputLocation);
+        	final String separatorFile = buildAndWriteSeparatorFOL(posExamples, negExamples, nonConstValueVars, this.specName, groupName, this.outputLocation);
         	if (separatorFile == null) {
         		// this is a really inelegant way to not write the FOL sep file if there aren't any negative examples
         		return;
         	}
-        	final String sortsMapFile = writeSortsMap(nonConstValueTypes, this.specName, groupName, this.outputLocation);
+        	final String sortsMapFile = writeSortsMap(nonConstValueVars, this.specName, groupName, this.outputLocation);
         	this.jsonStrs.put(separatorFileKey, separatorFile);
         	this.jsonStrs.put(sortsMapFileKey, sortsMapFile);
     	}
@@ -161,28 +195,36 @@ public class RobustDiffRep {
 	
 	
 	/* Static helper methods */
-	
-	private static void domainsAreMutuallyExclusiveCheck(final Map<String, StateVarType> varTypes) {
-		final List<StateVarType> types = new ArrayList<>(varTypes.values());
-		for (int i = 0; i < types.size(); ++i) {
-			for (int j = i+1; j < types.size(); ++j) {
-				final StateVarType iType = types.get(i);
-				final StateVarType jType = types.get(j);
-				final boolean differentTypeNames = !iType.getName().equals(jType.getName());
-				if (differentTypeNames && !Utils.intersection(iType.getDomain(), jType.getDomain()).isEmpty()) {
-					System.err.println("Warning: domains intersect for types " + iType.getName() + " and " + jType.getName());
-				}
-			}
-		}
-	}
+
+    private static String buildConstValueConstraint(final Map<String, String> constValueValues, Map<String,String> jsonOutput) {
+        Set<String> constraints = new HashSet<>();
+        for (final String var : constValueValues.keySet()) {
+        	final String val = constValueValues.get(var);
+        	final String constr = var + " = " + val;
+        	constraints.add(constr);
+        }
+        final String constValueConstraint = String.join(", ", constraints);
+        return Utils.stringEscape(constValueConstraint);
+    }
     
-    private static String writeSortsMap(final Set<StateVarType> nonConstValueTypes, final String specName, final String groupName, final String outputLoc) {
+    private static String writeSortsMap(final Set<StateVariable> nonConstValueVars, final String specName, final String groupName, final String outputLoc) {
     	List<String> mappings = new ArrayList<>();
-    	for (StateVarType type : nonConstValueTypes) {
-    		final String name = "\"" + type.getName() + "\"";
-    		final String domain = "{" + String.join(",", type.getDomain()) + "}";
-    		final String mapping = name + ":\"" + Utils.stringEscape(domain) + "\"";
-    		mappings.add(mapping);
+    	for (StateVariable var : nonConstValueVars) {
+    		final StateVarType type = var.getType();
+    		if (type instanceof StateVarFunctionType) {
+    			// only write the domain + range sorts for a function. no need to include the TLA+ function type
+    			final StateVarFunctionType ftype = (StateVarFunctionType) type;
+        		final String domainSortMapping = "\"" + ftype.getDomain().getName() + "\":\"" + Utils.stringEscape(ftype.getDomain().toTlaType()) + "\"";
+        		final String rangeSortMapping = "\"" + ftype.getRange().getName() + "\":\"" + Utils.stringEscape(ftype.getRange().toTlaType()) + "\"";
+        		mappings.add(domainSortMapping);
+        		mappings.add(rangeSortMapping);
+    		}
+    		else {
+        		final String name = "\"" + type.getName() + "\"";
+        		final String domain = type.toTlaType();
+        		final String mapping = name + ":\"" + Utils.stringEscape(domain) + "\"";
+        		mappings.add(mapping);
+    		}
     	}
     	final String map = "{" + String.join(",", mappings) + "}";
     	
@@ -192,58 +234,106 @@ public class RobustDiffRep {
         return path;
     }
     
-    private static String buildAndWriteSeparatorFOL(final Set<EKState> posExamples, final Set<EKState> negExamples, final Map<String, StateVarType> varTypes,
-    		final Set<String> nonConstValueVars, final Set<StateVarType> nonConstValueTypes, final Map<String,String> valueToConstantMap,
+    private static String buildAndWriteSeparatorFOL(final Set<EKState> posExamples, final Set<EKState> negExamples, final Set<StateVariable> nonConstValueVars,
     		final String specName, final String groupName, final String outputLoc) {
+
+    	// create FOL separator file
+    	StringBuilder builder = new StringBuilder();
+
+    	// collect types (sorts)
+    	Set<String> sorts = new HashSet<>();
+    	for (final StateVariable var : nonConstValueVars) {
+    		final StateVarType type = var.getType();
+    		if (type instanceof StateVarFunctionType) {
+    			final StateVarFunctionType ftype = (StateVarFunctionType) type;
+        		sorts.add("(sort " + ftype.getDomain().getName() + ")");
+        		sorts.add("(sort " + ftype.getRange().getName() + ")");
+    		}
+    		else {
+        		sorts.add("(sort " + type.getName() + ")");
+    		}
+    	}
+    	
+    	// collect state vars (relations and functions)
+    	Set<String> relations = new HashSet<>();
+    	Set<String> functions = new HashSet<>();
+    	for (final StateVariable var : nonConstValueVars) {
+    		final StateVarType type = var.getType();
+    		if (type instanceof StateVarFunctionType) {
+    			final StateVarFunctionType ftype = (StateVarFunctionType) type;
+    			final String function = "(function " + var.getName() + " " + ftype.getDomain().getName() + " " + ftype.getRange().getName() + ")";
+    			functions.add(function);
+    		}
+    		else {
+    			final String relation = "(relation " + var.getName() + " " + type.getName() + ")";
+    			relations.add(relation);
+    		}
+    	}
+
+    	// collect constants (basic domain elements)
+    	Set<StateVarBasicType> basicConsts = new HashSet<>();
+    	for (final StateVariable var : nonConstValueVars) {
+    		final StateVarType type = var.getType();
+    		if (type instanceof StateVarFunctionType) {
+    			final StateVarFunctionType ftype = (StateVarFunctionType) type;
+        		Utils.assertTrue(ftype.getDomain() instanceof StateVarBasicType, "Expected domain to be a basic var type!");
+        		Utils.assertTrue(ftype.getRange() instanceof StateVarBasicType, "Expected range to be a basic var type!");
+    			basicConsts.add((StateVarBasicType) ftype.getDomain());
+    			basicConsts.add((StateVarBasicType) ftype.getRange());
+    		}
+    		else {
+        		Utils.assertTrue(type instanceof StateVarBasicType, "Expected basic var type!");
+    			basicConsts.add((StateVarBasicType) type);
+    		}
+    	}
+    	
+    	// create const / element defs
     	Set<String> consts = new HashSet<>();
     	Set<String> modelElements = new HashSet<>();
     	Set<String> modelElementDefs = new HashSet<>();
-    	for (StateVarType type : nonConstValueTypes) {
-    		final String typeName = type.getName();
-    		for (String e : type.getDomain()) {
-    			assert(valueToConstantMap.containsKey(e));
-    			final String elem = valueToConstantMap.get(e);
-    			final String elemConst = "e" + elem + "Const";
+    	for (final StateVarBasicType bconst : basicConsts) {
+    		final String typeName = bconst.getName();
+    		for (final String e : bconst.getDomain()) {
+    			//final String elem = valueToConstantMap.get(e);
+    			final String elem = "Ee_eE" + toSeparatorString(e) + "_" + typeName;
+    			final String elemConst = elem + "Const";
     	    	consts.add("(constant " + elem + " " + typeName + ")");
     	    	modelElements.add("(" + elemConst + " " + typeName + ")");
     	    	modelElementDefs.add("(= " + elem + " " + elemConst + ")");
     		}
     	}
-    	Set<String> sorts = new HashSet<>();
-    	for (StateVarType type : nonConstValueTypes) {
-    		sorts.add("(sort " + type.getName() + ")");
-    	}
     	
     	
-    	// create FOL separator file
-    	StringBuilder builder = new StringBuilder();
-    	
-    	// types (sorts)
+    	// print everything
     	builder.append(String.join("\n", sorts));
     	builder.append("\n\n");
-    	
-    	// state variables (relations)
-    	for (String var : nonConstValueVars) {
-    		StateVarType type = varTypes.get(var);
-    		builder.append("(relation " + var + " " + type.getName() + ")\n");
-    	}
-    	builder.append("\n");
-    	
-    	// constants
+    	builder.append(String.join("\n", relations));
+    	builder.append("\n\n");
+    	builder.append(String.join("\n", functions));
+    	builder.append("\n\n");
     	builder.append(String.join("\n", consts));
     	builder.append("\n\n");
     	
     	// models
+    	final Set<String> nonConstValueVarsAsStrings = nonConstValueVars
+    			.stream()
+    			.map(v -> v.getName())
+    			.collect(Collectors.toSet());
+    	final Map<String, StateVariable> varNamesMap = nonConstValueVars
+    			.stream()
+    		   .collect(Collectors.toMap(StateVariable::getName, Function.identity()));
     	boolean atLeastOneNegExample = false;
     	Set<String> posModels = new HashSet<>();
     	for (EKState s : posExamples) {
-    		final String pos = toSeparatorModel(s, "+", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
-    		posModels.add(pos);
-    		builder.append(pos);
+    		final String pos = toSeparatorModel(s, "+", modelElements, modelElementDefs, nonConstValueVarsAsStrings, varNamesMap);
+    		if (pos != null) {
+	    		posModels.add(pos);
+	    		builder.append(pos);
+    		}
     	}
     	for (EKState s : negExamples) {
-    		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVars, valueToConstantMap);
-    		if (!posModels.contains(neg.replace('-', '+'))) {
+    		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVarsAsStrings, varNamesMap);
+    		if (neg != null && !posModels.contains(neg.replace('-', '+'))) {
     			atLeastOneNegExample = true;
     			builder.append(neg);
     		}
@@ -259,43 +349,13 @@ public class RobustDiffRep {
     	Utils.writeFile(path, builder.toString());
         return path;
     }
-
-    private static String buildConstValueConstraint(final Set<String> constValueVars, final Map<String, String> constValueValues, Map<String,String> jsonOutput) {
-        Set<String> constraints = new HashSet<>();
-        for (String var : constValueVars) {
-        	final String val = constValueValues.get(var);
-        	final String constraint = var + " = " + val;
-        	constraints.add(constraint);
-        }
-        final String constValueConstraint = String.join(", ", constraints);
-        return Utils.stringEscape(constValueConstraint);
-    }
-    
-    private static void determineConstAndNonConstVars(final Map<String, StateVarType> diffStateVarDomains, final Map<String, StateVarType> varTypes,
-    		Set<StateVarType> nonConstValueTypes, Set<String> nonConstValueVars, Set<String> constValueVars, Map<String, String> constValueValues) {
-    	for (String var : diffStateVarDomains.keySet()) {
-    		StateVarType t = diffStateVarDomains.get(var);
-    		assert(t.getDomain().size() > 0);
-    		if (t.getDomain().size() == 1) {
-    			final String exactValue = Utils.singletonGetElement(t.getDomain());
-    			constValueVars.add(var);
-    			constValueValues.put(var, exactValue);
-    		} else {
-    			if (varTypes.containsKey(var)) {
-	    			StateVarType varType = varTypes.get(var);
-	    			nonConstValueVars.add(var);
-	    			nonConstValueTypes.add(varType);
-    			}
-                else {
-                    System.err.println("Warning! TypeOK does not describe all state variables!");
-                }
-    		}
-    	}
-    }
     
     private static String toSeparatorModel(final EKState tlaState, final String label, final Set<String> modelElements,
-    		final Set<String> modelElementDefs, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
-    	final String sms = toSeparatorModelString(tlaState, nonConstValueVars, valueToConstantMap);
+    		final Set<String> modelElementDefs, final Set<String> nonConstValueVars, final Map<String, StateVariable> varNamesMap) {
+    	final String sms = toSeparatorModelString(tlaState, nonConstValueVars, varNamesMap);
+    	if (sms == null) {
+    		return null;
+    	}
     	final String elementsStr = String.join(" ", modelElements);
     	
         StringBuilder builder = new StringBuilder();
@@ -311,31 +371,55 @@ public class RobustDiffRep {
         return builder.toString();
     }
     
-    private static String toSeparatorModelString(final EKState tlaState, final Set<String> nonConstValueVars, final Map<String,String> valueToConstantMap) {
+    private static String toSeparatorModelString(final EKState tlaState, final Set<String> nonConstValueVars, final Map<String, StateVariable> varNamesMap) {
     	ArrayList<String> separatorConjuncts = new ArrayList<>();
     	ArrayList<Pair<String,String>> stateAssignments = Utils.extractKeyValuePairsFromState(tlaState);
     	for (Pair<String,String> assg : stateAssignments) {
     		final String var = assg.first;
+    		final String val = assg.second;
     		if (nonConstValueVars.contains(var)) {
-    			assert(valueToConstantMap.containsKey(assg.second));
-        		final String val = "e" + valueToConstantMap.get(assg.second) + "Const";
-        		final String sepConjunct = "    (" + var + " " + val + ")";
-        		separatorConjuncts.add(sepConjunct);
+    			final boolean functionValue = val.contains("|->");
+    			if (functionValue) {
+    				// yea sorry my code is awful
+    				final String f = var;
+    				final StateVariable sv = varNamesMap.get(f);
+    				final StateVarType type = sv.getType();
+    				Utils.assertTrue(type instanceof StateVarFunctionType, "Expected function type!");
+    				final StateVarFunctionType ftype = (StateVarFunctionType) type;
+    				final String xSort = ftype.getDomain().getName();
+    				final String ySort = ftype.getRange().getName();
+    				
+    				final String[] parts = val.split(Pattern.quote(","));
+    				for (final String asg : parts) {
+    					final String[] kv = asg.split(Pattern.quote("|->"));
+    					Utils.assertTrue(kv.length == 2, "Found malformed function mapping!");
+    					final String domainVal = kv[0].replaceAll("[\\[\\]]", "").trim();
+    					final String rangeVal = kv[1].replaceAll("[\\[\\]]", "").trim();
+    	        		final String x = "Ee_eE" + toSeparatorString(domainVal) + "_" + xSort + "Const";
+    	        		final String y = "Ee_eE" + toSeparatorString(rangeVal) + "_" + ySort + "Const";
+    	        		final String sepConjunct = "    (= (" + f + " " + x + ") " + y + ")";
+	        			separatorConjuncts.add(sepConjunct);
+    	        		if (!ftype.getDomain().getRawTlcDomain().contains(domainVal) || !ftype.getRange().getRawTlcDomain().contains(rangeVal)) {
+    	        			// if we see an element in the domain or range of the function that isn't part of the values we care about,
+    	        			// then don't include this sample
+    	        			return null;
+    	        		}
+    				}
+    			}
+    			else {
+    				final StateVariable sv = varNamesMap.get(var);
+    				final String sort = sv.getType().getName();
+	        		final String sepFolVal = "Ee_eE" + toSeparatorString(val) + "_" + sort + "Const";
+	        		final String sepConjunct = "    (" + var + " " + sepFolVal + ")";
+	        		separatorConjuncts.add(sepConjunct);
+	        		if (!sv.getType().getRawTlcDomain().contains(val)) {
+	        			// if we see an element in the domain that isn't part of the values we care about, then don't include this sample
+	        			return null;
+	        		}
+    			}
     		}
     	}
 		return String.join("\n", separatorConjuncts);
-    }
-    
-    // translate (TLA+ state var values) -> (FOL Separator constants)
-    private static Map<String,String> tlaValueToSeparatorConstant(Set<StateVarType> types) {
-    	Map<String,String> map = new HashMap<>();
-    	for (StateVarType type : types) {
-    		for (String tlaVarValue : type.getDomain()) {
-    			final String folSepConstant = toSeparatorString(tlaVarValue);
-    			map.put(tlaVarValue, folSepConstant);
-    		}
-    	}
-    	return map;
     }
     
     private static String toSeparatorString(String str) {
@@ -343,6 +427,7 @@ public class RobustDiffRep {
     			.replaceAll("[\\s]", "Ss_sS")
     			.replaceAll("[\"]", "Qq_qQ")
     			.replaceAll("[{]", "Lp_pL")
-    			.replaceAll("[}]", "Rp_pR");
+    			.replaceAll("[}]", "Rp_pR")
+    			.replaceAll("[,]", "Cc_cC");
     }
 }

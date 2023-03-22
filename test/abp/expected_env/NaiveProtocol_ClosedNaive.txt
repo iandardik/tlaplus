@@ -4,45 +4,45 @@ Diff rep grouped by action:
 Input:
 Safety boundary representation: out/NaiveProtocol_Input_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","Ian"}
+Sort2 == {"Kevin","David","Ian"}
 /\ receiverState = "output"
 /\ senderState = "waitInput"
-/\ \A S \in Sort1 : (output # S \/ input # S)
+/\ \A S \in Sort2 : (output # S \/ input # S)
 
 Output:
 Safety boundary representation: out/NaiveProtocol_Output_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","Ian"}
+Sort2 == {"Kevin","David","Ian"}
 /\ receiverState = "output"
 /\ senderState = "waitInput"
-/\ \A S \in Sort1 : (output # S \/ input # S)
+/\ \A S \in Sort2 : (output # S \/ input # S)
 
 Receive1:
 Safety boundary representation: out/NaiveProtocol_Receive1_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort2 == {0,1}
+Sort1 == {0,1}
 /\ receiverState = "waitRec"
-/\ \A S \in Sort2 : (senderState # "waitInput" /\ (senderBit # S \/ receiverBit = S \/ senderState = "waitAck"))
+/\ \A S \in Sort1 : (senderState # "waitInput" /\ (receiverBit = S \/ senderBit # S \/ senderState = "waitAck"))
 
 GetAck0:
 Safety boundary representation: out/NaiveProtocol_GetAck0_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","Ian"}
+Sort2 == {"Kevin","David","Ian"}
 /\ senderState = "waitAck"
 /\ senderBit = 0
-/\ \A S \in Sort1 : ((output = S \/ input # S \/ receiverState = "waitRec") /\ (receiverState = "waitRec" => receiverBit = 1) /\ (receiverBit = 1 => receiverState = "waitRec"))
+/\ \A S \in Sort2 : ((receiverBit # 0 \/ receiverState # "waitRec") /\ (output = S \/ receiverState = "waitRec" \/ input # S) /\ (receiverBit = 0 \/ receiverState = "waitRec"))
 
 GetAck1:
 Safety boundary representation: out/NaiveProtocol_GetAck1_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","Ian"}
+Sort2 == {"Kevin","David","Ian"}
 /\ senderState = "waitAck"
 /\ senderBit = 1
-/\ \A S \in Sort1 : ((receiverBit = 1 \/ receiverState = "waitRec") /\ (output = S \/ input # S \/ receiverState = "waitRec") /\ (output # S \/ input # S \/ receiverBit # 1 \/ receiverState # "waitRec"))
+/\ \A S \in Sort2 : ((receiverBit = 0 => receiverState = "waitRec") /\ (output = S \/ receiverState = "waitRec" \/ input # S) /\ (receiverBit = 0 \/ output # S \/ receiverState # "waitRec" \/ input # S))
 
 Receive0:
 Safety boundary representation: out/NaiveProtocol_Receive0_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort2 == {0,1}
+Sort1 == {0,1}
 /\ receiverState = "waitRec"
-/\ \A S \in Sort2 : (senderState # "waitInput" /\ (senderBit # S \/ receiverBit = S \/ senderState = "waitAck"))
+/\ \A S \in Sort1 : (senderState # "waitInput" /\ (receiverBit = S \/ senderBit # S \/ senderState = "waitAck"))

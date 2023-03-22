@@ -9,8 +9,8 @@ Diff rep grouped by action:
 Confirm:
 Safety boundary representation: out/Voting_Confirm_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","None","Ian"}
+Sort3 == {"Kevin","David","None","Ian"}
 /\ eoConfirm = "None"
 /\ booth = {"eofficial"}
 /\ state = "confirm"
-/\ \A S \in Sort1 : ((eoChoice = S => voterChoice = S) /\ voterChoice # "None")
+/\ \A S \in Sort3 : (eoChoice # "None" /\ (voterChoice = S => eoChoice = S))

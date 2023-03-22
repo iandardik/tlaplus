@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 
@@ -28,17 +29,21 @@ def load_sorts_map(sorts_map_file):
     return json.loads(contents)
 
 def substituteTlaChars(form):
-    return form.replace("Ss_sS", " ")\
+    form2 = form.replace("Ss_sS", " ")\
+        .replace("Ee_eE", "")\
         .replace("Qq_qQ", "\"")\
         .replace("Lp_pL", "{")\
-        .replace("Rp_pR", "}")
+        .replace("Rp_pR", "}")\
+        .replace("Cc_cC", ",")
+    return re.sub("_Sort[0-9]*","",form2)
 
 def print_constraint(const, non_const, sorts_map_file):
     print("Safety boundary rep formula (with sort definitions):")
     if non_const is not None and sorts_map_file is not None:
+        subst_non_const = substituteTlaChars(non_const)
         sorts_map = load_sorts_map(sorts_map_file)
         for k,v in sorts_map.items():
-            if k in non_const:
+            if k in subst_non_const:
                 sort_def = k + " == " + v
                 print(sort_def)
     if const is not None:

@@ -1,13 +1,11 @@
-Warning: domains intersect for types Sort3 and Sort4
-
 TLA+ Module: Voting
 Diff rep grouped by action:
 
 Confirm:
 Safety boundary representation: out/Voting_Confirm_diff_rep.txt
 Safety boundary rep formula (with sort definitions):
-Sort1 == {"Kevin","David","None","Ian"}
+Sort4 == {"Kevin","David","None","Ian"}
 /\ booth = {"eofficial"}
 /\ state = "confirm"
 /\ confirmed = {}
-/\ \A S \in Sort1 : ((eoChoice # S \/ voterChoice # S) /\ eoChoice # "None")
+/\ \A S \in Sort4 : (eoChoice # "None" /\ (voterChoice # S \/ eoChoice # S))
