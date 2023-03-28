@@ -4,7 +4,7 @@ VARIABLES tmState, tmPrepared, rmState
 
 vars == <<tmState, tmPrepared, rmState>>
 
-RMs == {"rm1", "rm2", "rm3"}
+RMs == {"rm1", "rm2"}
 
 
 Init ==   
@@ -12,6 +12,8 @@ Init ==
   /\ tmPrepared = {}
   /\ rmState = [rm \in RMs |-> "working"]
 
+
+\* TM transitions
 
 RcvPrepare(rm) ==
   /\ tmState = "init"
@@ -30,14 +32,11 @@ SndAbort(rm) ==
   /\ UNCHANGED <<tmPrepared, rmState>>
 
 
+\* RM transitions
+
 SndPrepare(rm) == 
   /\ rmState[rm] = "working"
   /\ rmState' = [rmState EXCEPT![rm] = "prepared"]
-  /\ UNCHANGED <<tmState, tmPrepared>>
-  
-SilentAbort(rm) ==
-  /\ rmState[rm] = "working"
-  /\ rmState' = [rmState EXCEPT![rm] = "aborted"]
   /\ UNCHANGED <<tmState, tmPrepared>>
 
 RcvCommit(rm) ==
@@ -45,6 +44,11 @@ RcvCommit(rm) ==
   /\ UNCHANGED <<tmState, tmPrepared>>
 
 RcvAbort(rm) ==
+  /\ rmState' = [rmState EXCEPT![rm] = "aborted"]
+  /\ UNCHANGED <<tmState, tmPrepared>>
+  
+SilentAbort(rm) ==
+  /\ rmState[rm] = "working"
   /\ rmState' = [rmState EXCEPT![rm] = "aborted"]
   /\ UNCHANGED <<tmState, tmPrepared>>
 
@@ -55,9 +59,9 @@ Next ==
         \/ SndCommit(rm)
         \/ SndAbort(rm)
         \/ SndPrepare(rm)
-        \/ SilentAbort(rm)
         \/ RcvCommit(rm)
         \/ RcvAbort(rm)
+        \/ SilentAbort(rm)
 
 Spec == Init /\ [][Next]_vars
 
