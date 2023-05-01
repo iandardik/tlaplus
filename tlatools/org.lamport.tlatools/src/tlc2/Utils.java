@@ -135,12 +135,15 @@ public class Utils {
     }
     
     public static String normalizeStateString(String s) {
-		//String[] conjuncts = s.replace('\n', ' ').trim().split(Pattern.quote("\\s*/\\\\s*"));
-    	String[] conjuncts = s.split(Pattern.quote("\n"));
-    	for (int i = 0; i < conjuncts.length; ++i) {
-    		final String orig = conjuncts[i];
-    		conjuncts[i] = orig.replaceAll(Pattern.quote("/\\"), "").trim();
+    	final String[] rawConjuncts = s.replace("\n", "").split(Pattern.quote("/\\"));
+    	ArrayList<String> clist = new ArrayList<>();
+    	for (int i = 0; i < rawConjuncts.length; ++i) {
+    		final String c = rawConjuncts[i].trim();
+    		if (!c.isEmpty()) {
+    			clist.add(c);
+    		}
     	}
+    	final String[] conjuncts = toStringArray(clist);
 		Arrays.sort(conjuncts);
 		return String.join(" /\\ ", conjuncts);
 	}

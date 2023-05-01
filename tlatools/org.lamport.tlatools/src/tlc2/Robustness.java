@@ -194,6 +194,7 @@ public class Robustness {
             	// compute the entire state space
             	final TLC tlcTypeOK = new TLC("PropDiffRepTypeOK");
             	runTLCExtractStateSpace(tlaFile, tlc, outputLoc, tlcTypeOK);
+            	Utils.assertNotNull(tlcTypeOK.getKripke(), "Unable to build state space from TypeOK!");
             	diffRep.writeBoundaryFOLSeparatorFile(tlcTypeOK);
         	}
         	else {
