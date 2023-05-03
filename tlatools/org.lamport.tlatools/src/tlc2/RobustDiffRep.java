@@ -332,25 +332,25 @@ public class RobustDiffRep {
     		}
     	}
 		final int maxLen = 999999999;
-		final int maxPosExamples = Utils.maxPosExamples();
-		int numPosExamplesIncluded = 0;
-		int numPosExamplesSkipped = 0;
+		final int maxNegExamples = Utils.maxNegExamples();
+		int numNegExamplesIncluded = 0;
+		int numNegExamplesSkipped = 0;
     	for (EKState s : negExamples) {
     		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVarsAsStrings, varNamesMap);
     		if (neg != null && !posModels.contains(neg.replace('-', '+'))) {
     			atLeastOneNegExample = true;
-    			if (builder.length() < maxLen && numPosExamplesIncluded < maxPosExamples) {
-    				++numPosExamplesIncluded;
+    			if (builder.length() < maxLen && numNegExamplesIncluded < maxNegExamples) {
+    				++numNegExamplesIncluded;
     				builder.append(neg);
     			} else {
-    				++numPosExamplesSkipped;
+    				++numNegExamplesSkipped;
     			}
     		}
     	}
-    	if (numPosExamplesSkipped > 0) {
-    		System.err.println("WARNING: the state space is very large. Including " + numPosExamplesIncluded +
-    				" positive examples and skipping " + numPosExamplesSkipped +
-    				" positive examples during formula inference for group " + groupName + ".");
+    	if (numNegExamplesSkipped > 0) {
+    		System.err.println("WARNING: the state space is very large. Including " + numNegExamplesIncluded +
+    				" negative examples and skipping " + numNegExamplesSkipped +
+    				" negative examples during formula inference for group " + groupName + ".");
     	}
 
 		// this is a really inelegant way to not write the FOL sep file if there aren't any negative examples
