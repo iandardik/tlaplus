@@ -8,6 +8,8 @@ test_dir_therac="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/th
 test_dir_fixed_mutex="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/fixed_mutex/"
 test_dir_abp="/Users/idardik/Documents/CMU/tlaplus-master/git/tlaplus/test/abp/"
 
+unset TLA_ROBUST_MAX_POS_EXAMPLES
+
 gen_test_suite() {
     pushd "${1}"
     shift

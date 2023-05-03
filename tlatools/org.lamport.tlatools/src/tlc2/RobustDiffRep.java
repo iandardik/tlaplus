@@ -331,12 +331,26 @@ public class RobustDiffRep {
 	    		builder.append(pos);
     		}
     	}
+		final int maxLen = 999999999;
+		final int maxPosExamples = Utils.maxPosExamples();
+		int numPosExamplesIncluded = 0;
+		int numPosExamplesSkipped = 0;
     	for (EKState s : negExamples) {
     		final String neg = toSeparatorModel(s, "-", modelElements, modelElementDefs, nonConstValueVarsAsStrings, varNamesMap);
     		if (neg != null && !posModels.contains(neg.replace('-', '+'))) {
     			atLeastOneNegExample = true;
-    			builder.append(neg);
+    			if (builder.length() < maxLen && numPosExamplesIncluded < maxPosExamples) {
+    				++numPosExamplesIncluded;
+    				builder.append(neg);
+    			} else {
+    				++numPosExamplesSkipped;
+    			}
     		}
+    	}
+    	if (numPosExamplesSkipped > 0) {
+    		System.err.println("WARNING: the state space is very large. Including " + numPosExamplesIncluded +
+    				" positive examples and skipping " + numPosExamplesSkipped +
+    				" positive examples during formula inference for group " + groupName + ".");
     	}
 
 		// this is a really inelegant way to not write the FOL sep file if there aren't any negative examples

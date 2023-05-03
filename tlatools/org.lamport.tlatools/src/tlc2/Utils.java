@@ -24,6 +24,9 @@ public class Utils {
 	private static final String LSQBRACE = "[";
 	private static final String RSQBRACE = "]";
 	
+	private static final String MAX_POS_EXAMPLES_ENV_VAR_KEY = "TLA_ROBUST_MAX_POS_EXAMPLES";
+	private static final int DEFAULT_MAX_POST_EXAMPLES = Integer.MAX_VALUE;
+	
 	
     public static class Pair<A,B> {
         public A first;
@@ -60,6 +63,19 @@ public class Utils {
     		proj.add(e.first);
     	}
     	return proj;
+    }
+    
+    
+    public static int maxPosExamples() {
+    	if (System.getenv().containsKey(MAX_POS_EXAMPLES_ENV_VAR_KEY)) {
+    		final String sval = System.getenv().get(MAX_POS_EXAMPLES_ENV_VAR_KEY);
+    		try {
+    			return Integer.parseInt(sval);
+    		} catch (NumberFormatException e) {
+    			// do nothing, just return the default value
+    		}
+    	}
+    	return DEFAULT_MAX_POST_EXAMPLES;
     }
 
 	
